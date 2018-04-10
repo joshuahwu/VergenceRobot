@@ -1,4 +1,4 @@
-function[obj,flag] = setupSerial(comPort)
+function[obj,flag] = setUpSerial(comPort)
 % It accept as the entry value, the index of the serial port
 % Arduino is connected to, and as output values it returns the serial 
 % element obj and a flag value used to check if when the script is compiled
