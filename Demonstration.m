@@ -48,3 +48,6 @@ while(strcmp(fscanf(connection,'%s'),'Done')~=1)
     disp('Waiting Saccade Trial')
 end
 end
+
+%% Circle Drawing
+function circle(connection,

@@ -1,25 +1,26 @@
 #include <stdio.h>
-#define xPulse 13
-#define xDir 12
+#define xPulse 8
+#define xDir 9
 
-#define yPulse 11
-#define yDir 10
+#define yPulse 10
+#define yDir 11
 
-#define xMin 4
-#define xMax 5
-#define yMin 2
-#define yMax 3
+#define xMin 2
+#define xMax 3
+#define yMin 4
+#define yMax 5
 #define RED 8
 #define BLUE 6
 #define GREEN 7
 
-int direction = 1;
-unsigned long microsteps = 16;
+int direction = 1; /*viewing from behind of motor, 1 = clockwise*/
+unsigned long microsteps = 16; /*divides the steps per revolution by this number*/
 int b[2];
 int bstore[2];
-unsigned long dimensions[2]={1638*microsteps,2092*microsteps};
+unsigned long dimensions[2]={30000*microsteps,30000*microsteps};
 unsigned long location[2]={0,0};
-int virtDim = 100;
+int virtDimX = 100;
+int virtDimY = 50;
 
 int rot = 1600;
 int vel = 80;
@@ -109,7 +110,9 @@ unsigned long recalibrate(int pin) {
       line(0,microsteps*10,vel);
     }
     steps+=10;
-    if(steps>2500) {
+    
+    
+    if(steps>(long) dimensions[1]*1.2) {
       Serial.end();
       break;
     }
@@ -150,7 +153,7 @@ unsigned long recalibrate(int pin) {
 void line(long x1, long y1, int v) {
   location[0]+=x1;
   location[1]+=y1;
-  long x0 = 0, y0=0;
+  long x0 = 0, y0 = 0;
   long md1, md2, s_s1, s_s2, ox, oy;
   long dx = abs(x1-x0), sx = x0< x1 ? 1 : -1;
   long dy = abs(y1-y0), sy = y0< y1 ? 1 : -1;
@@ -219,18 +222,21 @@ void setup()
   Serial.begin(9600);
 
   /* Communcates with Serial connection to verify */
-  Serial.println('a');
-  char a = 'b';
-  while (a != 'a')
+  Serial.println("Type the letter a and hit enter");
+  char serialInit = 'b';
+  while (serialInit != 'a')
   {
-    a = Serial.read();
+    serialInit = Serial.read();
   }
+  Serial.println("Ready");
 
   /* Determines dimensions */
   int *i = findDimensions();
+  /* Scales dimensions to be in terms of microsteps*/
   dimensions[0] = *i * microsteps;
   dimensions[1]= *(i+1) * microsteps;
   digitalWrite(GREEN,LOW);
+  
 }
 
 /* Main looping function
@@ -247,9 +253,9 @@ void loop()
    * Parse incoming command from Serial connection
    */
   if(val!= NULL) {
-    char wat[val.length()+1];
-    val.toCharArray(wat,val.length()+1);
-    double *command = parseCommand(wat);
+    char inputArray[val.length()+1];
+    val.toCharArray(inputArray,val.length()+1);
+    double *command = parseCommand(inputArray);
     switch ((int) *command) {
       case 1: // Calibrate
         /* Calibrates to xMin and yMin and updates location to (0,0) */
@@ -266,8 +272,8 @@ void loop()
         /* moveTo
          * Simple move to designated location and holds for a certain time
          */
-        dispx = (long) (*(command+1)/virtDim*dimensions[0])-location[0];
-        dispy = (long) (*(command+2)/virtDim*dimensions[1])-location[1];
+        dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0];
+        dispy = (long) (*(command+2)/virtDimY*dimensions[1])-location[1];
         line(dispx,dispy, vel);
         digitalWrite(BLUE,HIGH);
         Serial.println("Done");
@@ -276,14 +282,14 @@ void loop()
         break;
       case 3: // Speed
         {
-          /* Osccilate
+          /* Oscillate
            * Moves to first coordinate and oscillates between that and second coordinate
            * 
            */
-          long dx = (long) ((*(command+3)-*(command+1))/virtDim*dimensions[0]);
-          long dy = (long) ((*(command+4)-*(command+2))/virtDim*dimensions[1]);
-          dispx = (long) (*(command+1)/virtDim*dimensions[0])-location[0];
-          dispy = (long) (*(command+2)/virtDim*dimensions[1])-location[1];
+          long dx = (long) ((*(command+3)-*(command+1))/virtDimX*dimensions[0]);
+          long dy = (long) ((*(command+4)-*(command+2))/virtDimY*dimensions[1]);
+          dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0];
+          dispy = (long) (*(command+2)/virtDimY*dimensions[1])-location[1];
           line(dispx,dispy,vel);
           digitalWrite(RED,HIGH);
           delay(1000);
