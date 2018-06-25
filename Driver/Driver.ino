@@ -9,9 +9,9 @@
 #define xMax 3
 #define yMin 4
 #define yMax 5
-#define RED 8
-#define BLUE 6
-#define GREEN 7
+#define RED 48
+#define BLUE 49
+#define GREEN 50
 
 int direction = 1; /*viewing from behind of motor, 1 = clockwise*/
 unsigned long microsteps = 16; /*divides the steps per revolution by this number*/
