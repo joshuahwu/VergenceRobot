@@ -1,17 +1,18 @@
 #include <stdio.h>
-#define xPulse 13
-#define xDir 12
+#define xPulse 8
+#define xDir 9
 
-#define yPulse 11
-#define yDir 10
+#define yPulse 10
+#define yDir 11
 
-#define xMin 4
-#define xMax 5
-#define yMin 2
-#define yMax 3
-#define RED 8
-#define BLUE 6
-#define GREEN 7
+#define xMin 3
+#define xMax 2
+#define yMin 4
+#define yMax 5
+
+#define RED 48
+#define BLUE 50
+#define GREEN 52
 
 int direction = 1;
 unsigned long microsteps = 16;
@@ -146,25 +147,25 @@ unsigned long recalibrate(int pin) {
 /* Implementation of Bresenham's Algorithm for a line 
  * Input vector (in number of steps) along with pulse width
  * Proprioceptive location
+ * v is speed in delayMicroseconds
  */
 void line(long x1, long y1, int v) {
   location[0]+=x1;
   location[1]+=y1;
   long x0 = 0, y0=0;
-  long md1, md2, s_s1, s_s2, ox, oy;
   long dx = abs(x1-x0), sx = x0< x1 ? 1 : -1;
   long dy = abs(y1-y0), sy = y0< y1 ? 1 : -1;
-  long err = (dx>dy ? dx : -dy)/2, e2; 
+  long err = (dx>dy ? dx : -dy)/2, err_save; 
   digitalWrite(xDir,(sx+1)/2);
   digitalWrite(yDir,(sy+1)/2);
   for(;;){    
     if (x0==x1 && y0==y1) break;
-    e2 = err;
-    if (e2 >-dx) { 
+    err_save = err;
+    if (err_save >-dx) { 
       err -= dy; 
       x0 += sx;
       digitalWrite(xPulse, HIGH);
-      if (e2<dy) {
+      if (err_save<dy) {
         err += dx; 
         y0 += sy;
         digitalWrite(yPulse, HIGH);
@@ -177,7 +178,7 @@ void line(long x1, long y1, int v) {
         digitalWrite(xPulse, LOW);
         delayMicroseconds(v);
       }
-    } else if (e2<dy) {
+    } else if (err_save<dy) {
         err += dx;
         y0 += sy;
         digitalWrite(yPulse, HIGH);
@@ -268,7 +269,7 @@ void loop()
          */
         dispx = (long) (*(command+1)/virtDim*dimensions[0])-location[0];
         dispy = (long) (*(command+2)/virtDim*dimensions[1])-location[1];
-        line(dispx,dispy, vel);
+        line(dispx,dispy,vel);
         digitalWrite(BLUE,HIGH);
         Serial.println("Done");
         delay(*(command+3));
@@ -276,7 +277,7 @@ void loop()
         break;
       case 3: // Speed
         {
-          /* Osccilate
+          /* Oscillate
            * Moves to first coordinate and oscillates between that and second coordinate
            * 
            */
