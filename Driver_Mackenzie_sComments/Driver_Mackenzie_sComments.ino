@@ -18,7 +18,7 @@
 #define GREEN 50
 
 /* Defining initial variables and arrays */
-int direction = 1; /*viewing from behind motor, with shaft facing away, 1 = clockwise, -1 = counterclockwise*/
+int direction = 1; /*viewing from behind motor, with shaft facing away, 1 = clockwise, 0 = counterclockwise*/
 unsigned long microsteps = 16; /*divides the steps per revolution by this number*/
 unsigned long dimensions[2]={30000*microsteps,30000*microsteps}; /*preallocating dimensions to be much larger than the physical system*/
 unsigned long location[2]={0,0}; /*presetting location*/
