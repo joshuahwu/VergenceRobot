@@ -1,4 +1,4 @@
-a = setUpSerial('COM4');
+a = setUpSerial('COM5');
 
 fprintf(a,'SpeedMetrics');
 
