@@ -1,0 +1,32 @@
+Things we need to do:
+
+PARAMETER INTIALIZATION:
+
+Speed Initialization - Function that does tests and collects speed data and models it
+	- Moves at different speeds and directions
+	- Models most likely done in MATLAB and then sent back to Arduino
+	- Writes information to a text file (can only be done in MATLAB)
+
+Motor direction intialization - Function that tells you which switches correspond to which directions
+	- Writes it to a text file
+
+EXPERIMENT DESIGN:
+
+Arc movement - Will be able to designate distance from between the monkey's eyes to target, intial and final locations in degrees, and speed
+	- Circular movement in Arduino
+
+Talk to Divya about syncing up our code with data collection systems
+
+In the end will need to be able to do 4 types of experiments
+	- Smooth pursuit while keeping vergence angle constant
+	- Linear smooth pursuit vergence movements centered on one eye or between the two eyes
+	- Saccade from back screen to target in space
+	- Linear smooth pursuit while altering vergence angle
+
+RIG IMPROVEMENTS:
+
+Increase gear size to increase speed
+	- Needs to be able to move at 130 degrees per second
+	- Max range needs to be a bit larger than working range
+	- May need to upgrade motors for corresponding increases in torque
+

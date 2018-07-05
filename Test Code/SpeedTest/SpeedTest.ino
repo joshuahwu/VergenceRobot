@@ -14,6 +14,7 @@ int direction = 1;
 unsigned long microsteps = 8;
 int b[2];
 int bstore[2];
+/*Default values for small prototype rig*/
 unsigned long dimensions[2]={1638*microsteps,2092*microsteps};
 unsigned long location[2]={0,0};
 int virtDim = 100;
@@ -167,8 +168,8 @@ void setup()
   int *i = findDimensions();
   dimensions[0] = *i * microsteps;
   dimensions[1]= *(i+1) * microsteps;
-  double array[11]= {0,156.4,309,454,587.8,707.1,809,891,951.1,987.7,1000};
-  int arraySize = 11;
+  //double array[11]= {0,156.4,309,454,587.8,707.1,809,891,951.1,987.7,1000};
+  //int arraySize = 11;
   //Serial.println("Beginning");   
 }
 
@@ -181,14 +182,18 @@ void loop() {
     /* Speed Trials
    * Still needs testing
    */
-    int spdi = 30;
+    int spdi = 30; /* Initial and Final Speeds for curve fitting */
     int spdf = 200;
-    int dspd = 99;
-    int di = 0;
+    int dspd = 99; 
+    int di = 0; /* Initial and Final yDistances for curve fitting */
     int df = 500;
     int dd = 499;
+
+    /* Number of loops for speed and angles*/
     int speedloops = (int) ((spdf-spdi)/dspd + 1);
     int distanceloops = (int) ((df-di)/dd + 1);
+
+    /* Communicate with MATLAB all the variables */
     Serial.println("Beginning");
     Serial.println(spdi);
     Serial.println(spdf);
@@ -197,13 +202,14 @@ void loop() {
     Serial.println(df);
     Serial.println(dd);
 
+    /* Intialize loop arrays that will be sent over*/
     unsigned long speedRuns[distanceloops];
     int xDistance[distanceloops];
     int yDistance[distanceloops];
     /* Speed Loop */
     int trialNum;
     for(int j = spdi; j<=spdf;j+=dspd) {
-      int maxSpeed = j;
+      int maxDelay = j;
       /* Distance Loop */
       for(int i = di; i<=df;i+=dd) {
         recalibrate(xMin);
@@ -211,13 +217,19 @@ void loop() {
         delay(1000);
         int x = 1000;
         int y = i;
+
+        /* Calculate how long it takes to move to specified position at specified delayMicroseconds */
         long startTime = millis();
-        line((long) x*microsteps,(long) y*microsteps,maxSpeed);
+        line((long) x*microsteps,(long) y*microsteps,maxDelay);
         long endTime = millis();
         int index = (int) (j/2) - 3;
         long timed = endTime-startTime;
+
+        /* Calculating total distance in metric */
         //float distance = sqrt(sq(x) + sq(y))*PI*11.64;
         //float spd = distance/timed;
+
+        /* Saving information in appropriate arrays*/
         speedRuns[trialNum] = timed;
         xDistance[trialNum] = x;
         yDistance[trialNum] = y;
@@ -227,8 +239,9 @@ void loop() {
         //Serial.println(a);
         delay(2000);
       }
+
+      /*Send x and y distances and time */
       Serial.println("Sending");
-      
       for(int i = 0;i<distanceloops;i++) {
         Serial.println(speedRuns[i]);
       }
