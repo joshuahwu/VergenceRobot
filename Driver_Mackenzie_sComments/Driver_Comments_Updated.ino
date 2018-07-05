@@ -7,7 +7,7 @@
 /*pins for the y-axis stepper motor*/
 #define yPulse 10
 #define yDir 11
-/*pins for the 4 microswitchces*/ 
+/*pins for the 4 microswitches*/ 
 #define xMin 2
 #define xMax 3
 #define yMin 4
@@ -22,19 +22,20 @@ int direction = 1; /*viewing from behind motor, with shaft facing away, 1 = cloc
 unsigned long microsteps = 16; /*divides the steps per revolution by this number, corresponds to microstepping settings on stepper driver*/
 unsigned long dimensions[2]={30000*microsteps,30000*microsteps}; /*preallocating dimensions to previously measured values*/
 unsigned long location[2]={0,0}; /*presetting location*/
-/*arbitrary upper limit for location input, with lower limit of 0*/
-int virtDimX = 100; /* max x dimension that can be inputted*/
-int virtDimY = 50; /*max y dimension that can be inputted*/
+/*arbitrary upper limit for coordinate input, with lower limit of 0*/
+int virtDimX = 100; /* max virtual x dimension that can be inputted*/
+int virtDimY = 50; /*max virtual y dimension that can be inputted*/
 
 int vel = 80; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
+/*delay in microseconds between motors turning on and off*/
 String val; /*String object to store inputs read from the Serial Connection*/
 
 
 /* parseCommand function: Parses command received from Serial Connection and returns designated inputs */
 double* parseCommand(char strCommand[]) { /*inputs are null terminated character arrays*/
-  const char delim[2] = ":"; /*unchangeable character, 2 element array designating the delimiter as :*/
+  const char delim[2] = ":"; /*unchangeable character, 2-element array designating the delimiter as :*/
   char *fstr; /*first string defined as a pointer variable*/ 
-  fstr = strtok(strCommand,delim); /*first call: determines first input of the string*/
+  fstr = strtok(strCommand,delim); /*first call: identifies first input of the string*/
   if (strcmp(fstr,"calibrate")==0) { /*implement if first string is "calibrate"*/
     /* Calibrate
      * No numerical inputs
@@ -55,7 +56,8 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     int inputs = 1;
     /*assign numerical inputs to spaces in array*/
     while(fstr!=NULL) { /*implement while the first string is not empty*/
-      fstr=strtok(NULL,delim); /*split entire string into tokens (individual strings), returns pointer to first token*/
+      fstr=strtok(NULL,delim); /*subsequent calls: accesses inputs to String object until it reaches null character*/
+      /*split entire string into tokens (individual strings), returns pointer to first token*/
       inputs[i++]=atof(fstr); /*converts string to a double and stores in the designated space in the array*/
     }
     return inputs;
@@ -95,11 +97,11 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
  * Ends at (xMin, yMin)
  */
 int* findDimensions() {
-  recalibrate(xMax); /*move to xMax*/
-  int a = recalibrate(xMin); /*a = number of steps necessary to move from xMax to xMin*/
-  recalibrate(yMax); /*move to yMax*/
-  int b = recalibrate(yMin); /*b = number of steps necessary to move from yMax to yMin*/
-  static int i[2] = {a,b}; /*store x & y dimensions in an array in terms of number of steps*/
+  recalibrate(xMax); 
+  int a = recalibrate(xMin); 
+  recalibrate(yMax);
+  int b = recalibrate(yMin); 
+  static int i[2] = {a,b}; 
   return i;
 }
 
@@ -115,13 +117,13 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
   /*Specific pin recalibration/movement toward that pin*/
   int val = digitalRead(pin); /*read the pin, 0 = pressed, 1 = unpressed*/
   while(val) {
-    if(pin==xMin) { /*if pin is xMin*/
+    if(pin==xMin) { 
       line(-microsteps*10,0,vel); /*move in negative x-direction toward xMin*/
-    } else if(pin==xMax) { /*if pin is xMax*/
+    } else if(pin==xMax) { 
       line(microsteps*10,0,vel); /*move in positive x-direction toward xMax*/
-    } else if(pin==yMin) { /*if pin is yMin*/
+    } else if(pin==yMin) { 
       line(0,-microsteps*10,vel); /*move in negative y-direction toward yMin*/
-    } else if(pin==yMax){ /*if pin is yMax*/
+    } else if(pin==yMax){
       line(0,microsteps*10,vel); /*move in positive y-direction toward yMax*/
     }
     steps+=10; /*add 10 to steps counter*/
@@ -129,7 +131,7 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
     
     if(steps>(long) dimensions[1]*1.2) { /*if the number of steps is greater than 120% of the number of steps of the y-dimension*/
       Serial.end(); /*end the serial connection*/
-      break; /*break put of the loop*/
+      break; /*break out of the loop*/
     }
     
     /*Overshoot adjustment: moves back until pin is just released*/
@@ -137,29 +139,29 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
     if(val==0) { /*if switch is pressed*/
       while(val==0) { /*while switch is pressed*/
         if(pin==xMin) {
-          line(microsteps,0,vel); /*if xMin microswitch is pressed (if value read from pin is 0), move forward in x-direction*/
-          location[0]=0; /*update x-coordinate location to 0*/
+          line(microsteps,0,vel); /*if microswitch is pressed (if value read from pin is 0), away from that pin*/
+          location[0]=0; /*update coordinate location*/
           delay(200);
         } else if(pin==xMax) {
-          line(-microsteps,0,vel); /*if xMax microswitch is pressed, move back in negative x-direction*/
-          location[0]=dimensions[0]; /*update x-coordinate location to max x-dimension*/
+          line(-microsteps,0,vel); 
+          location[0]=dimensions[0]; 
           delay(200);
         } else if(pin==yMin) {
-          line(0,microsteps,vel); /*if yMin microswitch is pressed, move forward in y-direction*/
-          location[1]=0; /*update y-coordinate location to 0*/
+          line(0,microsteps,vel); 
+          location[1]=0; 
           delay(200);
         } else if(pin==yMax){
-          line(0,-microsteps,vel); /*if yMax microswitch is pressed, move back in negative y-direction*/
-          location[1]=dimensions[1]; /*update y-coordinate location to max y-dimension*/
+          line(0,-microsteps,vel); 
+          location[1]=dimensions[1]; 
           delay(200);
         } 
-        val = digitalRead(pin); /*continue reading the state of the pin*/
+        val = digitalRead(pin); /*re-read the state of the pin*/
         steps-=1; /*remove one step from total step count, correcting for the overshoot*/
       }
       break; /*when val no longer is 0, switch has just been released, break from the loop*/
     }
   }
-  return steps; /*returns the number of steps*/ 
+  return steps; /*return the number of steps*/ 
 }
 
 /* Implementation of Bresenham's Algorithm for a line 
@@ -168,29 +170,29 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
  */
 void line(long x1, long y1, int v) { /*inputs: x-component of vector, y-component of vector, speed/pulse width*/
   location[0]+=x1; /*add x1 to current x-coordinate location*/
-  location[1]+=y1; /*add y1 to current y-coordinate location*/
+  location[1]+=y1;
   long x0 = 0, y0 = 0;
   long dx = abs(x1-x0), signx = x0< x1 ? 1 : -1; /*change in x is absolute value of difference between (x1,y1) location and origin*/
   /*if x0 is less than x1, set signx equal to 1; if x0 is not less than x1, set signx equal to -1*/
-  /*if x-component of vector (desired x displacement) is positive, signx = 1 (clockwise rotation of motor)*/
-  long dy = abs(y1-y0), signy = y0< y1 ? 1 : -1; /*same as above, except in terms of y*/
+  /*if x-component of vector (desired x displacement) is positive, signx = 1*/
+  long dy = abs(y1-y0), signy = y0< y1 ? 1 : -1; /*same as above in terms of y*/
   long err = (dx>dy ? dx : -dy)/2, e2; /*if dx is greater than dy, set error equal to dx/2; if dx is not greater than dy, set error equal to -dy/2*/
-  digitalWrite(xDir,(signx+1)/2); /*setup x motor rotation direction, if signx = 1, rotate counterclockwise; if signx = -1, don't move*/
-  digitalWrite(yDir,(signy+1)/2); /*setup y motor rotation direction*/ 
+  digitalWrite(xDir,(signx+1)/2); /*setup x motor rotation direction, if signx = 1, direction = 1, rotate clockwise; if signx = -1, direction = 0, rotate counterclockwise*/
+  digitalWrite(yDir,(signy+1)/2); 
   for(;;){ /*infinite loop (;;)*/
     if (x0==x1 && y0==y1) break; /*once the desired location is reached, break out of the infinite loop and halt movement*/
-    e2 = err; /*to maiantain error at start of loop, since error changes in some cases*/
-    if (e2 >-dx) { /*if error is greater than negative dx*/
+    e2 = err; /*to maintain error at start of loop, since error changes in some cases*/
+    if (e2 >-dx) { 
       err -= dy; /*subtract dy from the error*/
       x0 += signx; /*add signx (1 or -1) to the x-coordinate location*/
-      /*HIGH to LOW represents one cycle of square wave, which corresponds to motor rotation*/
-      digitalWrite(xPulse, HIGH); 
-      if (e2<dy) { /*if error is less than dy*/
-        err += dx; /*add dx to error*/
-        y0 += signy; /*add signy (1 or -1) to the y-coordinate location*/
-        digitalWrite(yPulse, HIGH); 
+      /*switching from HIGH to LOW represents one cycle of square wave, which corresponds to motor rotation*/
+      digitalWrite(xPulse, HIGH); /*half of cycle for x rotation*/
+      if (e2<dy) { 
+        err += dx; 
+        y0 += signy; 
+        digitalWrite(yPulse, HIGH); /*half of cycle for y rotation*/
         delayMicroseconds(v);
-        digitalWrite(xPulse, LOW); 
+        digitalWrite(xPulse, LOW); /*full cycle, rotation possible*/
         digitalWrite(yPulse, LOW);
         delayMicroseconds(v);
       } else {
@@ -238,7 +240,6 @@ void setup()
   digitalWrite(RED,LOW);
   digitalWrite(BLUE,LOW);
   digitalWrite(GREEN,HIGH);
-  //??
   digitalWrite(yDir,direction);
   digitalWrite(xDir,direction);
   /*set serial data transmission rate*/
@@ -254,7 +255,7 @@ void setup()
   Serial.println("Ready");
 
   /* Determines dimensions */
-  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
+  int *i = findDimensions(); /*pointer to the array that contains the x & y-dimensions in terms of steps*/
   /* Scales dimensions to be in terms of microsteps*/
   dimensions[0] = *i * microsteps; /*x-dimension*/
   dimensions[1]= *(i+1) * microsteps; /*y-dimension*/
@@ -284,7 +285,7 @@ void loop()
         /* Calibrates to xMin and yMin and updates location to (0,0) */
         digitalWrite(GREEN,HIGH);
         xErr = recalibrate(xMin); /*xErr is number of steps from initial x-coordinate location to 0*/
-        yErr = recalibrate(yMin); /*yErr is number of steps from initial y-coordinate location to 0*/
+        yErr = recalibrate(yMin); 
         location[0] = 0;
         location[1] = 0;
         Serial.println("Done");
@@ -294,9 +295,7 @@ void loop()
       case 2: // move:x0:y0:hold duration
         /* Simple move to designated location and holds for a certain time
          */
-        /*x displacement = desired x-cooridnate divided by the product of virtual dimension and total x-dimension, minus current x-coordinate location*/
         dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0]; /* Converting input virtual dimensions to microsteps*/
-        /*y displacement = desired y-cooridnate divided by the product of virtual dimension and total y-dimension, minus current y-coordinate location*/
         dispy = (long) (*(command+2)/virtDimY*dimensions[1])-location[1];
         /*move by designated vector displacement*/
         line(dispx, dispy, vel);
@@ -310,29 +309,25 @@ void loop()
           /* Oscillate
            * Moves to first coordinate and oscillates between that and second coordinate
            */
-          /*change in x, difference between initial x and final x adjusted for virtual dimension and size of system*/
           long dx = (long) ((*(command+3)-*(command+1))/virtDimX*dimensions[0]); /* Converting input virtual dimensions to microsteps*/
-          /*change in y, difference between initial y and final y adjusted for virtual dimension and size of system*/ 
           long dy = (long) ((*(command+4)-*(command+2))/virtDimY*dimensions[1]);
-          /*x displacment, difference between desired initial x and current x*/
-          dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0];
-          /*y displacment, difference between desired initial y and current y*/
+          dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0]; /*x displacment, difference between desired initial x and current x*/
           dispy = (long) (*(command+2)/virtDimY*dimensions[1])-location[1];
           line(dispx, dispy, vel);
           digitalWrite(RED,HIGH);
           delay(1000);
-          int maxSpeed = *(command+5);
+          int maxSpeed = *(command+5); /*smaller value for microseconds corresponds to faster overall speed*/
           int delta = *(command+7);
           long store_a = -dx/2;
           long store_b = -dy/2;
           //int f = 3;
           int minSpeed = 60; /* Minimum speed that target slows down to at edges of movement*/
           int dv = minSpeed-maxSpeed;
-          long dtx = (long) dx/(10*dv/2);
+          long dtx = (long) dx/(10*dv/2); /*intervals into which first and last 10% are divided*/
           long dty = (long) dy/(10*dv/2);
           
           for(int j=1; j<=*(command+6); j++) {
-            /* Speeds up in first 10% with intervals of 2 microseconds*/
+            /*Speeds up in first 10% with intervals of 2 microseconds*/
             for(int i=0; i<(int)dv/2;i++) {
               int a = minSpeed-i*2;       
               line(dtx,dty,a);
@@ -341,13 +336,13 @@ void loop()
             /* Moves 80% */
             line((long) dx*0.8,(long) dy*0.8,maxSpeed);
             
-            /* Slows down end 10% */
+            /*Slows down end 10% with intervals of 2 microseconds*/
             for(int i=0; i<(int)dv/2;i++) {
               int a = maxSpeed+i*2;       
               line(dtx,dty,a);
             }
 
-            /* Speeds up end 10% back */
+            /*Speeds up end 10% back with intervals of 2 microseconds*/
             for(int i=0; i<(int)dv/2;i++) {
               int a = minSpeed-i*2;       
               line(-dtx,-dty,a);
@@ -356,7 +351,7 @@ void loop()
             /* Moves 80% back */
             line((long) -dx*0.8,(long) -dy*0.8,maxSpeed);
 
-            /* Slows down end 10% back*/
+            /* Slows down end 10% back with intervals of 2 microseconds*/
             for(int i=0; i<(int) dv/2;i++) {
               int a = maxSpeed+i*2;       
               line(-dtx,-dty,a);
