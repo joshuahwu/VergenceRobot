@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 
 /* Defining Pins */
 /*pins for the x-axis stepper motor*/
@@ -29,6 +30,7 @@ int virtDimY = 50; /*max y dimension that can be inputted*/
 int vel = 60; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
 float pi = 3.14159265359; /*numerical value used for pi*/
 String val; /*String object to store inputs read from the Serial Connection*/
+//int xErr,yErr;
 
 
 /* parseCommand function: Parses command received from Serial Connection and returns designated inputs */
@@ -109,19 +111,19 @@ velArc = speed of movement
 moves to initial angle, then moves to final angle
 approximates a circle by drawing small lines
 */ 
-//void arcMove(int radius, float angInit, float angFinal, int velArc, int arcRes) {
-  //float angInit_rad = (pi/180)*angInit; /*convert initial angle from degrees to radians*/
-  //float angInit_res = angInit_rad*arcRes; /*adjust initial angle in radians by input resolution*/
-  //float angFinal_res = (pi/180)*angFinal*arcRes; /*convert final angle from degrees to radians then adjust by input resolution*/
-  //int dispInitx = 0.5*dimensions[0]+radius*cos(angInit_rad) - location[0];
-  //int dispInity = radius*sin(angInit_rad) - location[1];
-  //line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
-  //for (int i=angInit_res; i<=angFinal_res; i++){ /*move from initial to final angle*/
-    //int dx = -radius/arcRes*sin((float)i/arcRes); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
-    //int dy = radius/arcRes*cos((float)i/arcRes); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
-    //line(dx, dy, velArc); /*draw small line, which represents part of circle/arc*/
-  //}
-//}
+void arcMove(float radius, float angInit, float angFinal, int velArc, int arcRes) {
+  float angInit_rad = (pi/180)*(-angInit+90); /*convert initial angle from degrees to radians*/
+  float angInit_res = angInit_rad*arcRes; /*adjust initial angle in radians by input resolution*/
+  float angFinal_res = (pi/180)*(-angFinal+90)*arcRes; /*convert final angle from degrees to radians then adjust by input resolution*/
+  long dispInitx = 0.5*dimensions[0]+((float) radius)*cos(angInit_rad) - location[0];
+  long dispInity = ((float) radius)*sin(angInit_rad) - location[1];
+  line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
+  for (int i=angInit_res; i<=angFinal_res; i++){ /*move from initial to final angle*/
+    int dx = round(-radius/arcRes*sin((float)i/arcRes)); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
+    int dy = round(radius/arcRes*cos((float)i/arcRes)); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
+    line(dx, dy, velArc); /*draw small line, which represents part of circle/arc*/
+  }
+}
 
 
 /* findDimensions function:
@@ -138,7 +140,6 @@ int* findDimensions() {
   static int i[2] = {a,b}; /*store x & y dimensions in an array in terms of number of steps*/
   return i;
 }
-
 
 /* recalibrate function:
  * Moves target to specified edge (xMax, xMin, yMax, yMin)
@@ -296,10 +297,9 @@ void setup()
   /* Determines dimensions */
   int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
   /* Scales dimensions to be in terms of microsteps*/
-  dimensions[0] = *i * microsteps; //106512; /*x-dimension*/
+  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
   dimensions[1]=  *(i+1) * microsteps; //54624; /*y-dimension*/
   digitalWrite(GREEN,LOW); /*turn off green*/
-  //arcMove(20000, 0, 180, 80, 1000);
 }
 
 
@@ -336,7 +336,7 @@ void loop()
       case 2: // move:x0:y0:hold duration
         /* Simple move to designated location and holds for a certain time
          */
-        /*x displacement = desired x/y-cooridnate divided by the product of virtual dimension and total x/y-dimension, minus current x/y-coordinate location*/
+        /*x/y displacement = desired x/y-cooridnate divided by the product of virtual dimension and total x/y-dimension, minus current x/y-coordinate location*/
         dispx = (long) (*(command+1)/virtDimX*dimensions[0])-location[0]; /* Converting input virtual dimensions to microsteps*/
         dispy = (long) (*(command+2)/virtDimY*dimensions[1])-location[1];
         /*move by designated vector displacement*/
@@ -410,29 +410,29 @@ void loop()
         break;
       case 4: // arc:radius:angInit:angFinal:velArc:arcRes
         {
-        float angInit_rad = (pi/180)*(*(command+2)); /*convert initial angle from degrees to radians*/
+        float angInit_rad = (pi/180)*(-(*(command+2))+90); /*convert initial angle from degrees to radians*/
         float angInit_res = angInit_rad*(*(command+5)); /*adjust initial angle in radians by input resolution*/
-        float angFinal_res = (pi/180)*(*(command+3))*(*(command+5)); /*convert final angle from degrees to radians then adjust by input resolution*/
+        float angFinal_res = (pi/180)*(-(*(command+3))+90)*(*(command+5)); /*convert final angle from degrees to radians then adjust by input resolution*/
         long dispInitx = dimensions[0]*0.5 + ((float) *(command+1))*cos(angInit_rad) - location[0];
         long dispInity = ((float) *(command+1))*sin(angInit_rad) - location[1];
         line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
-        for (int i=angInit_res; i<=angFinal_res; i++){ /*move from initial to final angle*/
-          int dx = -(*(command+1))/(*(command+5))*sin((float)i/(*(command+5))); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
-          int dy = (*(command+1))/(*(command+5))*cos((float)i/(*(command+5))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
-          line(dx, dy, *(command+4)); /*draw small line, which represents part of circle/arc*/
+          for (int i=angInit_res; i<=angFinal_res; i++){ /*move from initial to final angle*/
+            int dx = round(-(*(command+1))/(*(command+5))*sin((float)i/(*(command+5)))); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
+            int dy = round((*(command+1))/(*(command+5))*cos((float)i/(*(command+5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
+            line(dx, dy, *(command+4)); /*draw small line, which represents part of circle/arc*/
+            }
+          /*the following code is a temporary addition to test location accuracy*/
+            //Serial.print("xloc:");
+            //Serial.print(location[0]/16); /*final x-location in steps*/
+            //Serial.print("; yloc:");
+            //Serial.println(location[1]/16); /*final y-location in steps*/
+            //xErr = recalibrate(xMin); 
+            //yErr = recalibrate(yMin);
+            //Serial.print("x steps:");
+            //Serial.print(xErr); /*number of steps to return to x=0*/
+            //Serial.print("; y steps:");
+            //Serial.println(yErr); /*number of steps to return to y=0*/
           }
-        /*the following code is a temporary addition to test location accuracy*/
-          Serial.print("xloc:");
-          Serial.print(location[0]/16); /*final x-location in steps*/
-          Serial.print("; yloc:");
-          Serial.println(location[1]/16); /*final y-location in steps*/
-          xErr = recalibrate(xMin); 
-          yErr = recalibrate(yMin);
-          Serial.print("x steps:");
-          Serial.print(xErr); /*number of steps to return to x=0*/
-          Serial.print("; y steps:");
-          Serial.println(yErr); /*number of steps to return to y=0*/
-        }
         break;
       case 5:
       /* Speed Trials
