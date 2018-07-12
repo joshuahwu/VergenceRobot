@@ -1,14 +1,14 @@
 #include <stdio.h>
-#define xPulse 8
-#define xDir 9
+#define xPulse 10
+#define xDir 11
 
-#define yPulse 10
-#define yDir 11
+#define yPulse 8
+#define yDir 9
 
 #define xMin 2
 #define xMax 3
-#define yMin 4
-#define yMax 5
+#define yMin 5
+#define yMax 4
 
 int direction = 1;
 unsigned long microsteps = 8;
@@ -18,7 +18,7 @@ int bstore[2];
 unsigned long dimensions[2]={1638*microsteps,2092*microsteps};
 unsigned long location[2]={0,0};
 int virtDim = 100;
-int vel = 150;
+int vel = 110;
 String val;
 
 /* Moves to xMax then xMin and counts the number of steps it took.
@@ -45,13 +45,13 @@ unsigned long recalibrate(int pin) {
   int val = digitalRead(pin);
   while(val) {
     if(pin==xMin) {
-      line(-microsteps*5,0,vel);
+      line(-microsteps*10,0,vel);
     } else if(pin==xMax) {
-      line(microsteps*5,0,vel);
+      line(microsteps*10,0,vel);
     } else if(pin==yMin) {
-      line(0,-microsteps*5,vel);
+      line(0,-microsteps*10,vel);
     } else if(pin==yMax){
-      line(0,microsteps*5,vel);
+      line(0,microsteps*10,vel);
     }
     steps+=10;
     //if(steps>2500) {
@@ -135,53 +135,6 @@ void line(long x1, long y1, int v) {
   }
 }
 
-double* parseCommand(char strCommand[]) {
-  const char delim[2] = ":";
-  char *fstr;
-  fstr = strtok(strCommand,delim);
-  Serial.println(fstr);
-  if (strcmp(fstr,"Calibrate")==0) {
-    static double j[1];
-    j[0]=1;
-    //Serial.println(j);
-    return j;
-  } else if (strcmp(fstr,"Saccade")==0) {
-    static double j[4];
-    j[0] = 2;
-    int i = 1;
-    while(fstr!=NULL) {
-      fstr=strtok(NULL,delim);
-      j[i++]=atof(fstr);
-    }
-    return j;
-  } else if (strcmp(fstr,"Smooth")==0) {
-    static double j[7];
-    j[0]=3;
-    int i = 1;
-    while(fstr!=NULL) {
-      fstr=strtok(NULL,delim);
-      j[i++]=atof(fstr);
-    }
-    return j;
-  } else if (strcmp(fstr,"SpeedModeling")==0) {
-    //Serial.println("speedModeling");
-    static double j[7];
-    j[0]=4;
-    int i = 1;
-    while(fstr!=NULL) {
-      fstr=strtok(NULL,delim);
-      j[i++]=atof(fstr);
-    }
-    return j;
-  } else {
-    //Serial.println("notworking");
-    static double j[1];
-    j[0]=5;
-    //Serial.println(j);
-    return j;
-  }
-}
-
 /* Main setup function
  * Verifies serial connection and traces edges for dimensions
  */
@@ -227,33 +180,27 @@ void loop() {
   val = Serial.readString();
   if(val!=NULL) {
     /* Speed Trials
-     * Still needs testing
-     */
-    Serial.println("Beginning");
-    int spdi, spdf,dspd,xi,xf,dx;
-    while(1) {
-      val = Serial.readString();
-      if(val!=NULL) {
-        char commandRead[val.length()+1];
-        val.toCharArray(commandRead,val.length()+1);
-        Serial.println(commandRead);
-        double *command = parseCommand(commandRead);
-        spdi = (int) *(command+1);
-        spdf = (int) *(command+2);
-        dspd = (int) *(command+3);
-        xi = (int) *(command+4);
-        xf = (int) *(command+5);
-        dx = (int) *(command+6);
-        break;
-        //Serial.println("Breaking");
-      }
-    }
-    Serial.println(spdi);
-    Serial.println(dx);
-    
+   * Still needs testing
+   */
+    int spdi = 30; /* Initial and Final Speeds for curve fitting */
+    int spdf = 200;
+    int dspd = 99; 
+    int di = 0; /* Initial and Final yDistances for curve fitting */
+    int df = 500;
+    int dd = 499;
+
     /* Number of loops for speed and angles*/
     int speedloops = (int) ((spdf-spdi)/dspd + 1);
-    int distanceloops = (int) ((xf-xi)/dx + 1);
+    int distanceloops = (int) ((df-di)/dd + 1);
+
+    /* Communicate with MATLAB all the variables */
+    Serial.println("Beginning");
+    Serial.println(spdi);
+    Serial.println(spdf);
+    Serial.println(dspd);
+    Serial.println(di);
+    Serial.println(df);
+    Serial.println(dd);
 
     /* Intialize loop arrays that will be sent over*/
     unsigned long speedRuns[distanceloops];
@@ -264,18 +211,18 @@ void loop() {
     for(int j = spdi; j<=spdf;j+=dspd) {
       int maxDelay = j;
       /* Distance Loop */
-      for(int i = xi; i<=xf;i+=dx) {
+      for(int i = di; i<=df;i+=dd) {
         recalibrate(xMin);
         recalibrate(yMin);
         delay(1000);
-        int x = 1000; // Steps
+        int x = 1000;
         int y = i;
 
         /* Calculate how long it takes to move to specified position at specified delayMicroseconds */
         long startTime = millis();
         line((long) x*microsteps,(long) y*microsteps,maxDelay);
         long endTime = millis();
-        //int index = (int) (j/2) - 3;
+        int index = (int) (j/2) - 3;
         long timed = endTime-startTime;
 
         /* Calculating total distance in metric */
@@ -297,8 +244,13 @@ void loop() {
       Serial.println("Sending");
       for(int i = 0;i<distanceloops;i++) {
         Serial.println(speedRuns[i]);
-        Serial.println(xDistance[i]);
-        Serial.println(yDistance[i]);
+      }
+      
+      if (j == spdi) {
+        for(int i = 0;i<distanceloops;i++) {
+          Serial.println(xDistance[i]);
+          Serial.println(yDistance[i]);
+        }
       }
       trialNum = 0;
     }

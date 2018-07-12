@@ -3,7 +3,7 @@ function[obj,flag] = setUpSerial(comPort)
 % Arduino is connected to, and as output values it returns the serial 
 % element obj and a flag value used to check if when the script is compiled
 % the serial element exists yet.
-
+flag = 1;
 % Initialize Serial object
 obj = serial(comPort);
 set(obj,'DataBits',8);
@@ -19,7 +19,6 @@ if (a=='a')
     disp('Serial read');
 end
 fprintf(obj,'%c','a');
-mbox = msgbox('Serial Communication setup'); 
-uiwait(mbox);
+mbox = msgbox('Serial Communication setup'); uiwait(mbox);
 fscanf(obj,'%u');
 end
