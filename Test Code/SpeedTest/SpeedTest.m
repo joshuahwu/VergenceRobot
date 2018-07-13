@@ -1,19 +1,20 @@
 % Delays and Distances that we're examing
-delayi = 50; % in microseconds
+delayi = 20; % in microseconds
 delayf = 80;
 ddelay = 10;
 xi = 0; % in steps
-xf = 1000;
+xf = 2000;
 dx = 250;
 angleTrials = 4;
-a = setUpSerial('COM4');
+a = setUpSerial('COM8');
 secondary_coeffs = speedModelFit(a,delayi,delayf,ddelay,angleTrials);
 fclose(a);
-
+    
 function [secondary_coeffs] = speedModelFit(...
     comPort,delayi,delayf,ddelay,angleTrials)
 
-% Communicate with Arduino all the variables
+% Communicate with Arduino all the variables 
+
 fprintf(comPort,['SpeedModeling:%d:%d:%d:%d'],...
     [delayi,delayf,ddelay,angleTrials]);
 
@@ -65,7 +66,6 @@ for i = 1:4
 end
 
 %% Finding model of speed to delay
-
 end
 
 function [output] = finalModel(coeff_array,delay,angle)
