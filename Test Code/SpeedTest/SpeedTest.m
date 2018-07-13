@@ -1,21 +1,12 @@
 % Delays and Distances that we're examining
 delayi = 10; % in microseconds
 delayf = 80;
-<<<<<<< HEAD
 ddelay = 10; 
 yi = 0; % in steps
 yf = 2000;
 dy = 250;
 %angleTrials = 
 a = setUpSerial('COM8'); 
-=======
-ddelay = 10;
-xi = 0; % in steps
-xf = 1000;
-dx = 250;
-angleTrials = 4;
-a = setUpSerial('COM4');
->>>>>>> afa3d2cd2f8cda36131853194d2f4eae7767edc6
 secondary_coeffs = speedModelFit(a,delayi,delayf,ddelay,angleTrials);
 fclose(a);
 
@@ -23,32 +14,23 @@ function [secondary_coeffs] = speedModelFit(...
     comPort,delayi,delayf,ddelay,angleTrials)
 
 % Communicate with Arduino all the variables
-<<<<<<< HEAD
 fprintf(comPort,['speedtest:%d:%d:%d:%d:%d:%d'],...
     [delayi,delayf,ddelay,yi,yf,dy]);
-=======
-fprintf(comPort,['SpeedModeling:%d:%d:%d:%d'],...
-    [delayi,delayf,ddelay,angleTrials]);
->>>>>>> afa3d2cd2f8cda36131853194d2f4eae7767edc6
 
 while(strcmp(fscanf(comPort,'%s'),'Beginning')~=1)
    disp('Waiting for Experiment Start')
 end
-<<<<<<< HEAD
 ddistance = fscanf(comPort,'%d'); %explain this fscanf thing again? it reads consecutively?
 finalDistance = ddistance*angleTrials;
-=======
-ddistance = fscanf(comPort,'%d')
-finalDistance = ddistance*angleTrials
->>>>>>> afa3d2cd2f8cda36131853194d2f4eae7767edc6
 
-delayLoopDim = floor((delayf-delayi)/ddelay + 1);
+spdLoopDim = floor((delayf-delayi)/ddelay + 1);
+angleLoopDim = floor((finalDistance-0)/ddistance + 1);
 
 % Every column will be a different speed
-time = zeros(angleTrials,delayLoopDim);
+time = zeros(angleLoopDim,spdLoopDim);
 delays = delayi:ddelay:delayf;
-x = zeros(angleTrials,delayLoopDim);
-y = zeros(angleTrials,delayLoopDim);
+x = zeros(angleLoopDim,spdLoopDim);
+y = zeros(angleLoopDim,spdLoopDim);
 speedCount = 0;
 
 while(1)
@@ -56,7 +38,7 @@ while(1)
     if (strcmp(waitSignal,'Done')==1)
         break;
     elseif (strcmp(waitSignal,'Sending')==1)
-        for i=1:angleTrials
+        for i=1:angleLoopDim
             timeRead = fscanf(comPort,'%d')
             time(i,speedCount+1) = timeRead;
             x(i,speedCount+1) = fscanf(comPort,'%d');
@@ -67,10 +49,10 @@ while(1)
 end
 
 speedArray = sqrt(x.^2+y.^2)./(time./1000); %in steps/s measured
-%speedArray = reshape(speeds,angleTrials,delayLoopDim);
-angles = atan(y(1:angleTrials,1)./x(1:angleTrials,1))*180/pi
+%speedArray = reshape(speeds,angleLoopDim,spdLoopDim);
+angles = atan(y(1:angleLoopDim,1)./x(1:angleLoopDim,1))*180/pi
 
-%% Finding model of delay to speed
+% Finds model of speed vs angles 
 coeffs_angles = zeros(length(delays),4);
 for i = 1:length(delays)
     f = fit(angles,speedArray(:,i),'exp2');
@@ -82,8 +64,6 @@ for i = 1:4
     f = fit(transpose(delays),coeffs_angles(:,i),'exp2');
     secondary_coeffs(i,:) = [f.a,f.b,f.c,f.d];
 end
-
-%% Finding model of speed to delay
 
 end
 
