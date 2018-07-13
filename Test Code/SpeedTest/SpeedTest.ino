@@ -11,14 +11,15 @@
 #define yMax 5
 
 int direction = 1;
-unsigned long microsteps = 8;
+unsigned long microsteps = 16;
 int b[2];
 int bstore[2];
 /*Default values for small prototype rig*/
 unsigned long dimensions[2]={1638*microsteps,2092*microsteps};
 unsigned long location[2]={0,0};
-int virtDim = 100;
-int vel = 150;
+int virtDimX = 100;
+int virtDimY = 50;
+int vel = 50;
 String val;
 
 /* Moves to xMax then xMin and counts the number of steps it took.
@@ -205,11 +206,11 @@ void setup()
   Serial.begin(9600);
 
   /* Communcates with Serial connection to verify */
-  Serial.println('a');
-  char a = 'b';
-  while (a != 'a')
+  Serial.println("Type the letter a, then press enter.");
+  char serialInit = 'b';
+  while (serialInit != 'a')
   {
-    a = Serial.read();
+    serialInit = Serial.read();
   }
 
   int *i = findDimensions();
