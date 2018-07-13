@@ -53,7 +53,7 @@ unsigned long recalibrate(int pin) {
     } else if(pin==yMax){
       line(0,microsteps*5,vel);
     }
-    steps+=10;
+    steps+=5;
     //if(steps>2500) {
     //  Serial.end();
     //  break;
@@ -229,46 +229,40 @@ void loop() {
     /* Speed Trials
      * Still needs testing
      */
+    int delayi, delayf,ddelay,angleTrials;
+    char commandRead[val.length()+1];
+    val.toCharArray(commandRead,val.length()+1);
+    Serial.println(commandRead);
+    double *command = parseCommand(commandRead);
+    delayi = (int) *(command+1);
+    delayf = (int) *(command+2);
+    ddelay = (int) *(command+3);
+    angleTrials = (int) *(command+4);
+    long minDim = min((long)(dimensions[0]/microsteps),(long)(dimensions[1]/microsteps));
+    int dx = (int) (0.9*minDim/(angleTrials-1));
+    int maxDistance = dx*(angleTrials-1);
+    //maxDistance = (int) *(command+5);
+    //dx = (int) *(command+6);
     Serial.println("Beginning");
-    int spdi, spdf,dspd,xi,xf,dx;
-    while(1) {
-      val = Serial.readString();
-      if(val!=NULL) {
-        char commandRead[val.length()+1];
-        val.toCharArray(commandRead,val.length()+1);
-        Serial.println(commandRead);
-        double *command = parseCommand(commandRead);
-        spdi = (int) *(command+1);
-        spdf = (int) *(command+2);
-        dspd = (int) *(command+3);
-        xi = (int) *(command+4);
-        xf = (int) *(command+5);
-        dx = (int) *(command+6);
-        break;
-        //Serial.println("Breaking");
-      }
-    }
-    Serial.println(spdi);
     Serial.println(dx);
     
     /* Number of loops for speed and angles*/
-    int speedloops = (int) ((spdf-spdi)/dspd + 1);
-    int distanceloops = (int) ((xf-xi)/dx + 1);
+    int delayloops = (int) ((delayf-delayi)/ddelay + 1); /*nothing for now*/
 
     /* Intialize loop arrays that will be sent over*/
-    unsigned long speedRuns[distanceloops];
-    int xDistance[distanceloops];
-    int yDistance[distanceloops];
+    unsigned long speedRuns[angleTrials];
+    int xDistance[angleTrials];
+    int yDistance[angleTrials];
     /* Speed Loop */
     int trialNum;
-    for(int j = spdi; j<=spdf;j+=dspd) {
+    for(int j = delayi; j<=delayf;j+=ddelay) {
       int maxDelay = j;
       /* Distance Loop */
-      for(int i = xi; i<=xf;i+=dx) {
+      for(int i = 0; i<=maxDistance;i+=dx) {
         recalibrate(xMin);
         recalibrate(yMin);
         delay(1000);
-        int x = 1000; // Steps
+        int x = maxDistance; // Steps
         int y = i;
 
         /* Calculate how long it takes to move to specified position at specified delayMicroseconds */
@@ -295,7 +289,7 @@ void loop() {
 
       /*Send x and y distances and time */
       Serial.println("Sending");
-      for(int i = 0;i<distanceloops;i++) {
+      for(int i = 0;i<angleTrials;i++) {
         Serial.println(speedRuns[i]);
         Serial.println(xDistance[i]);
         Serial.println(yDistance[i]);
