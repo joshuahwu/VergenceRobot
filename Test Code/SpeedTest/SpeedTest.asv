@@ -53,7 +53,9 @@ while(1)
         break;
     elseif (strcmp(waitSignal,'Sending')==1)
         for i=1:angleTrials
+            % read time stamp from Arduino
             timeRead = fscanf(comPort,'%d')
+            % store 
             time(i,speedCount+1) = timeRead;
             x(i,speedCount+1) = fscanf(comPort,'%d');
             y(i,speedCount+1) = fscanf(comPort,'%d');
