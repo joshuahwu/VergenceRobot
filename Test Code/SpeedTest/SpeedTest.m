@@ -1,11 +1,12 @@
-% Delays and Distances that we're examing
-delayi = 50; % in microseconds
+% Delays and Distances that we're examining
+delayi = 10; % in microseconds
 delayf = 80;
-ddelay = 10;
-xi = 0; % in steps
-xf = 1000;
-dx = 250;
-a = setUpSerial('COM4');
+ddelay = 10; 
+yi = 0; % in steps
+yf = 2000;
+dy = 250;
+%angleTrials = 
+a = setUpSerial('COM8'); 
 secondary_coeffs = speedModelFit(a,delayi,delayf,ddelay,angleTrials);
 fclose(a);
 
@@ -13,13 +14,13 @@ function [secondary_coeffs] = speedModelFit(...
     comPort,delayi,delayf,ddelay,angleTrials)
 
 % Communicate with Arduino all the variables
-fprintf(comPort,['SpeedModeling:%d:%d:%d:%d:%d'],...
-    [delayi,delayf,ddelay,xi,xf,dx]);
+fprintf(comPort,['speedtest:%d:%d:%d:%d:%d:%d'],...
+    [delayi,delayf,ddelay,yi,yf,dy]);
 
 while(strcmp(fscanf(comPort,'%s'),'Beginning')~=1)
    disp('Waiting for Experiment Start')
 end
-ddistance = fscanf(comPort,'%d');
+ddistance = fscanf(comPort,'%d'); %explain this fscanf thing again? it reads consecutively?
 finalDistance = ddistance*angleTrials;
 
 spdLoopDim = floor((delayf-delayi)/ddelay + 1);
