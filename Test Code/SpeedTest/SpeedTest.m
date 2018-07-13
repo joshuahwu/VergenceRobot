@@ -66,6 +66,12 @@ for i = 1:4
 end
 
 %% Finding model of speed to delay
+coeffs_delays = zeros(length(angles),4);
+for i = 1:numel(angles)
+    f = fit(transpose(speedArray(i,:)),transpose(delays),'exp2');
+    coeffs_delays(i,:) = [f.a,f.b,f.c,f.d];
+end
+
 reverse_coeffs = zeros(4,3);
 for i = 1:4
     f = fit(angles,coeffs_delays(:,i),'poly2');
