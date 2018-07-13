@@ -47,11 +47,14 @@ while(1)
     end
 end
 
+time
+x
+y
+
 speedArray = sqrt(x.^2+y.^2)./(time./1000); %in steps/s measured
 %speedArray = reshape(speeds,angleLoopDim,spdLoopDim);
 angles = atan(y(1:angleLoopDim,1)./x(1:angleLoopDim,1))*180/pi
 
-% Finds model of speed vs angles 
 coeffs_angles = zeros(length(delays),4);
 for i = 1:length(delays)
     f = fit(angles,speedArray(:,i),'exp2');

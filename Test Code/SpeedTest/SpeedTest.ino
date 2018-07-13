@@ -205,13 +205,12 @@ void setup()
   Serial.begin(9600);
 
   /* Communcates with Serial connection to verify */
-  Serial.println("Type the letter a, then hit enter.");
-  char serialInit = 'b';
-  while (serialInit != 'a')
+  Serial.println('a');
+  char a = 'b';
+  while (a != 'a')
   {
-    serialInit = Serial.read();
+    a = Serial.read();
   }
-  Serial.println("Ready!");
 
   int *i = findDimensions();
   dimensions[0] = *i * microsteps;
@@ -230,8 +229,8 @@ void loop() {
     /* Speed Trials
      * Still needs testing
      */
-    //Serial.println("Beginning");
-    int spdi,spdf,dspd,yi,yf,dy;
+    Serial.println("Beginning");
+    int spdi, spdf,dspd,xi,xf,dx;
     while(1) {
       val = Serial.readString();
       if(val!=NULL) {
@@ -242,19 +241,19 @@ void loop() {
         spdi = (int) *(command+1);
         spdf = (int) *(command+2);
         dspd = (int) *(command+3);
-        yi = (int) *(command+4);
-        yf = (int) *(command+5);
-        dy = (int) *(command+6);
+        xi = (int) *(command+4);
+        xf = (int) *(command+5);
+        dx = (int) *(command+6);
         break;
         //Serial.println("Breaking");
       }
     }
     Serial.println(spdi);
-    Serial.println(dy);
+    Serial.println(dx);
     
     /* Number of loops for speed and angles*/
     int speedloops = (int) ((spdf-spdi)/dspd + 1);
-    int distanceloops = (int) ((yf-yi)/dy + 1);
+    int distanceloops = (int) ((xf-xi)/dx + 1);
 
     /* Intialize loop arrays that will be sent over*/
     unsigned long speedRuns[distanceloops];
@@ -265,7 +264,7 @@ void loop() {
     for(int j = spdi; j<=spdf;j+=dspd) {
       int maxDelay = j;
       /* Distance Loop */
-      for(int i = yi; i<=yf;i+=dy) {
+      for(int i = xi; i<=xf;i+=dx) {
         recalibrate(xMin);
         recalibrate(yMin);
         delay(1000);
