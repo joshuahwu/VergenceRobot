@@ -454,32 +454,34 @@ void loop()
                Still needs testing
             */
             int delayi,delayf,ddelay,angleTrials;
-            Serial.println(inputArray);
+            /*assign commands to variables*/
             delayi = (int) * (command + 1);
             delayf = (int) * (command + 2);
             ddelay = (int) * (command + 3);
             angleTrials = (int) * (command + 4);
+            /*determine minimum dimension between x and y*/
             long minDim = min((long)(dimensions[0] / microsteps), (long)(dimensions[1] / microsteps));
-            int dx = (int) (0.9 * minDim / (angleTrials - 1));
-            int maxDistance = dx * (angleTrials - 1);
+            /*determine divisions of 90% of min dimension*/
+            int ddistance = (int) (0.9 * minDim / (angleTrials - 1))
+            int maxDistance = ddistance * (angleTrials - 1);
             //maxDistance = (int) *(command+5);
-            //dx = (int) *(command+6);
+            //ddistance = (int) *(command+6);
             Serial.println("Beginning");
-            Serial.println(dx);
+            Serial.println(ddistance);
 
             /* Number of loops for speed and angles*/
-            int delayloops = (int) ((delayf - delayi) / ddelay + 1); /*nothing for now*/
+            int delaytrials = (int) ((delayf - delayi) / ddelay + 1); /*nothing for now*/
 
             /* Intialize loop arrays that will be sent over*/
             unsigned long speedRuns[angleTrials];
             int xDistance[angleTrials];
             int yDistance[angleTrials];
-            /* Speed Loop */
+            /* Delay Loop */
             int trialNum;
             for (int j = delayi; j <= delayf; j += ddelay) {
               int maxDelay = j;
-              /* Distance Loop */
-              for (int i = 0; i <= maxDistance; i += dx) {
+              /* Angle Loop */
+              for (int i = 0; i <= maxDistance; i += ddistance) {
                 recalibrate(xMin);
                 recalibrate(yMin);
                 delay(1000);
@@ -508,7 +510,7 @@ void loop()
                 delay(2000);
               }
 
-              /*Send x and y distances and time */
+              /*Send x and y distances and time after each delay trial*/
               Serial.println("Sending");
               for (int i = 0; i < angleTrials; i++) {
                 Serial.println(speedRuns[i]);
