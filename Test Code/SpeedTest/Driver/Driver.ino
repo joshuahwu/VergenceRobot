@@ -24,7 +24,7 @@ unsigned long microsteps = 16; /*divides the steps per revolution by this number
 unsigned long dimensions[2] = {30000 * microsteps, 30000 * microsteps}; /*preallocating dimensions to previously measured values*/
 unsigned long location[2] = {0, 0}; /*presetting location*/
 /*arbitrary upper limit for location input, with lower limit of 0*/
-int virtDimX = 100; /* max x dimension that can be inputted*/
+int virtDimX = 50; /* max x dimension that can be inputted*/
 int virtDimY = 50; /*max y dimension that can be inputted*/
 
 int vel = 60; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
@@ -462,7 +462,7 @@ void loop()
             /*determine minimum dimension between x and y*/
             long minDim = min((long)(dimensions[0] / microsteps), (long)(dimensions[1] / microsteps));
             /*determine divisions of 90% of min dimension*/
-            int ddistance = (int) (0.9 * minDim / (angleTrials - 1))
+            int ddistance = (int) (0.9 * minDim / (angleTrials - 1));
             int maxDistance = ddistance * (angleTrials - 1);
             //maxDistance = (int) *(command+5);
             //ddistance = (int) *(command+6);
