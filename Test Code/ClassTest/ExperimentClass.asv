@@ -168,7 +168,7 @@ classdef ExperimentClass
             
             obj.forward_coeffs = obj.forward_coeffs;
             obj.reverse_coeffs = reverse_coeffs;
-            save(save_filename,'forward_coeffs','reverse_coeffs');
+            save(obj.save_filename,'forward_coeffs','reverse_coeffs');
         end
         
         %% Calculating a given delay and converting to speed
