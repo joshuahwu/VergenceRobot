@@ -174,8 +174,9 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
     }
     steps += 10; /*add 10 to steps counter*/
 
-
-    if (steps > (long) dimensions[1] * 1.2) { /*if the number of steps is greater than 120% of the number of steps of the y-dimension*/
+    boolean stepCheckX = ((steps>(long) (dimensions[0]*1.1)) && (pin == xMin || pin == xMax));
+    boolean stepCheckY = ((steps>(long) (dimensions[1]*1.1)) && (pin == yMin || pin == yMax));
+    if (stepCheckX || stepCheckY) { /*if the number of steps is greater than 120% of the number of steps of the y-dimension*/
       Serial.end(); /*end the serial connection*/
       break; /*break put of the loop*/
     }
