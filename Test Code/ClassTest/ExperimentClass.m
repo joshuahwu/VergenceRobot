@@ -193,31 +193,31 @@ classdef ExperimentClass
         %% Calculating a given delay and converting to speed
         % coeff_array is a 4x4 array - rows and columns both representing exp2
         function [speed] = delayToSpeed(obj,delay,angle)
-            complex_coeffs = [exp2(obj.forward_coeffs(1,:),delay),...
-                exp2(obj.forward_coeffs(2,:),delay),...
-                exp2(obj.forward_coeffs(3,:),delay),...
-                exp2(obj.forward_coeffs(4,:),delay)];
-            speed = exp2(complex_coeffs,angle);
+            complex_coeffs = [obj.exp2(obj.forward_coeffs(1,:),delay),...
+                obj.exp2(obj.forward_coeffs(2,:),delay),...
+                obj.exp2(obj.forward_coeffs(3,:),delay),...
+                obj.exp2(obj.forward_coeffs(4,:),delay)];
+            speed = obj.exp2(complex_coeffs,angle);
         end
         
         %% Calculating input speed to a delay sent to Arduino
         % coeff_array is a 4x3 array - rows representing exp2, columns representing
         % poly2
         function [delay] = speedToDelay(obj,speed,angle)
-            complex_coeffs = [poly2(obj.reverse_coeffs(1,:),angle),...
-                poly2(obj.reverse_coeffs(2,:),angle),...
-                poly2(obj.reverse_coeffs(3,:),angle),...
-                poly2(obj.reverse_coeffs(4,:),angle)];
-            delay = exp2(complex_coeffs,speed);
+            complex_coeffs = [obj.poly2(obj.reverse_coeffs(1,:),angle),...
+                obj.poly2(obj.reverse_coeffs(2,:),angle),...
+                obj.poly2(obj.reverse_coeffs(3,:),angle),...
+                obj.poly2(obj.reverse_coeffs(4,:),angle)];
+            delay = obj.exp2(complex_coeffs,speed);
         end
         
         %% 2nd Degree Polynomial
-        function [output] = poly2(coeffs,x)
+        function [output] = poly2(obj,coeffs,x)
             output = coeffs(1).*x.^2 + coeffs(2).*x.^2 + coeffs(3);
         end
         
         %% Two-Term Exponential Function
-        function [output] = exp2(coeffs,x)
+        function [output] = exp2(obj,coeffs,x)
             output = coeffs(1).*exp(coeffs(2).*x) + coeffs(3).*exp(coeffs(4).*x);
         end
         
