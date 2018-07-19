@@ -28,8 +28,27 @@ classdef ExperimentClass
             fprintf(obj.connection,'%c','a');
             mbox = msgbox('Serial Communication setup'); uiwait(mbox);
             fscanf(obj.connection,'%u');
-            obj.forward_coeffs = load(obj.save_filename,'forward_coeffs');
-            obj.reverse_coeffs = load(obj.save_filename,'reverse_coeffs');
+            params = load(obj.save_filename);
+            obj.forward_coeffs = params.forward_coeffs;
+            obj.reverse_coeffs = params.reverse_coeffs;
+            while(strcmp(fscanf(obj.connection,'%s'),'Send')~=1)
+                disp('Waiting to Send Coefficients');
+            end 
+            forward_coeffs = obj.forward_coeffs;
+            sendCoeffs(obj, forward_coeffs);
+%             fscanf(obj.connection,'%s')
+            reverse_coeffs = obj.reverse_coeffs;
+            sendCoeffs(obj, reverse_coeffs);
+%             fscanf(obj.connection,'%s')
+%             fscanf(obj.connection,'%s')
+%             fscanf(obj.connection,'%s')
+%             fscanf(obj.connection,'%s')
+            obj.forward_coeffs
+            obj.reverse_coeffs
+        end
+        
+        function output = readSerial(obj,type)
+            output = fscanf(obj.connection,type);
         end
         
         %% LINEAR OSCILLATION
@@ -119,7 +138,7 @@ classdef ExperimentClass
                         timeRead = fscanf(obj.connection,'%d')
                         time(i,speedCount+1) = timeRead;
                         x(i,speedCount+1) = fscanf(obj.connection,'%d');
-                        y(i,speedCount+1) = fscanf(obj.conncetion,'%d');
+                        y(i,speedCount+1) = fscanf(obj.connection,'%d');
                     end
                     speedCount=speedCount+1;
                 end
@@ -166,7 +185,7 @@ classdef ExperimentClass
                 reverse_coeffs(i,:) = [f.p1,f.p2,f.p3];
             end
             
-            obj.forward_coeffs = obj.forward_coeffs;
+            obj.forward_coeffs = forward_coeffs;
             obj.reverse_coeffs = reverse_coeffs;
             save(obj.save_filename,'forward_coeffs','reverse_coeffs');
         end
@@ -202,6 +221,17 @@ classdef ExperimentClass
             output = coeffs(1).*exp(coeffs(2).*x) + coeffs(3).*exp(coeffs(4).*x);
         end
         
+        %% sendCoeffs function
+        %takes in matrix of coeffcients
+        %converts matrix to a string that with : delimiter
+        %sends string to Arduino
+        
+        function sendCoeffs(obj, coeffs)
+            str = inputname(2)
+            strList = sprintf(':%d', coeffs);
+            strToSend = [str strList]
+            fprintf(obj.connection, strToSend)
+        end
         
     end
     

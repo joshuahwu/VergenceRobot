@@ -28,11 +28,11 @@ int virtDimX = 100; /* max x dimension that can be inputted*/
 int virtDimY = 50; /*max y dimension that can be inputted*/
 
 int vel = 60; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
-float pi = 3.14159265359; /*numerical value used for pi*/
+double pi = 3.14159265359; /*numerical value used for pi*/
 String val;
 String vals; /*String object to store inputs read from the Serial Connection*/
-float forward_coeffs[16];
-float reverse_coeffs[12];
+double forward_coeffs[16];
+double reverse_coeffs[12];
 //int xErr,yErr;
 
 
@@ -116,34 +116,35 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
 }
 
 void loadInfo() {
-  Serial.println("Send coeffs");
+  Serial.println("Send");
   while (1) {
     vals = Serial.readString();
-    float valsNew;
+    double valsNew;
 
     if (vals != NULL) {
       char inputArray[vals.length() + 1];
       vals.toCharArray(inputArray, vals.length() + 1);
-      float *coeffs = parseArray(inputArray);
-
+      double *coeffs = parseArray(inputArray);
+      Serial.println(*coeffs);
       //      delay(2000);
       //      for (int i=0; i<(*(coeffs + 1)); i++){
       //        Serial.println(*(coeffs + (i+2)), 4);
       //      }
 
       if (*coeffs == 2) {
+        Serial.println("Exit");
         break;
       }
     }
   }
 }
 
-float* parseArray(char strInput[]) {
+double* parseArray(char strInput[]) {
   const char delim[2] = ":";
   char * strtokIn;
   strtokIn = strtok(strInput, delim);
   if (strcmp(strtokIn, "forward_coeffs") == 0) {
-    static float valsNew[18];
+    static double valsNew[18];
     valsNew[0] = 1;
     valsNew[1] = 16;
     int i = 2;
@@ -156,7 +157,7 @@ float* parseArray(char strInput[]) {
     }
     return valsNew;
   } else if (strcmp(strtokIn, "reverse_coeffs") == 0) {
-    static float valsNew[14];
+    static double valsNew[14];
     valsNew[0] = 2;
     valsNew[1] = 12;
     int i = 2;
@@ -184,16 +185,16 @@ int* formSpeedModel() {
   moves to initial angle, then moves to final angle
   approximates a circle by drawing small lines
 */
-void arcMove(float radius, float angInit, float angFinal, int velArc, int arcRes) {
-  float angInit_rad = (pi / 180) * (-angInit + 90); /*convert initial angle from degrees to radians*/
-  float angInit_res = angInit_rad * arcRes; /*adjust initial angle in radians by input resolution*/
-  float angFinal_res = (pi / 180) * (-angFinal + 90) * arcRes; /*convert final angle from degrees to radians then adjust by input resolution*/
-  long dispInitx = 0.5 * dimensions[0] + ((float) radius) * cos(angInit_rad) - location[0];
-  long dispInity = ((float) radius) * sin(angInit_rad) - location[1];
+void arcMove(double radius, double angInit, double angFinal, int velArc, int arcRes) {
+  double angInit_rad = (pi / 180) * (-angInit + 90); /*convert initial angle from degrees to radians*/
+  double angInit_res = angInit_rad * arcRes; /*adjust initial angle in radians by input resolution*/
+  double angFinal_res = (pi / 180) * (-angFinal + 90) * arcRes; /*convert final angle from degrees to radians then adjust by input resolution*/
+  long dispInitx = 0.5 * dimensions[0] + ((double) radius) * cos(angInit_rad) - location[0];
+  long dispInity = ((double) radius) * sin(angInit_rad) - location[1];
   line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
   for (int i = angInit_res; i <= angFinal_res; i++) { /*move from initial to final angle*/
-    int dx = round(-radius / arcRes * sin((float)i / arcRes)); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
-    int dy = round(radius / arcRes * cos((float)i / arcRes)); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
+    int dx = round(-radius / arcRes * sin((double)i / arcRes)); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
+    int dy = round(radius / arcRes * cos((double)i / arcRes)); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
     line(dx, dy, velArc); /*draw small line, which represents part of circle/arc*/
   }
 }
@@ -367,15 +368,17 @@ void setup()
   }
   Serial.println("Ready");
 
-  /* Determines dimensions */
-  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
-  /* Scales dimensions to be in terms of microsteps*/
-  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
-  dimensions[1] =  *(i + 1) * microsteps; //54624; /*y-dimension*/
-  Serial.print("x-dim steps");
-  Serial.println(*i);
-  Serial.print("y-dim steps");
-  Serial.println(*(i + 1));
+  loadInfo();
+  delay(500);
+  Serial.println("Finished sending coeffs");
+  Serial.println(forward_coeffs[0]+forward_coeffs[1]);
+
+//  /* Determines dimensions */
+//  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
+//  /* Scales dimensions to be in terms of microsteps*/
+//  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
+//  dimensions[1] =  *(i + 1) * microsteps; //54624; /*y-dimension*/
+  
   digitalWrite(GREEN, LOW); /*turn off green*/
 }
 
@@ -487,15 +490,15 @@ void loop()
         break;
       case 4: // arc:radius:angInit:angFinal:velArc:arcRes
         {
-          float angInit_rad = (pi / 180) * (-(*(command + 2)) + 90); /*convert initial angle from degrees to radians*/
-          float angInit_res = angInit_rad * (*(command + 5)); /*adjust initial angle in radians by input resolution*/
-          float angFinal_res = (pi / 180) * (-(*(command + 3)) + 90) * (*(command + 5)); /*convert final angle from degrees to radians then adjust by input resolution*/
-          long dispInitx = dimensions[0] * 0.5 + ((float) * (command + 1)) * cos(angInit_rad) - location[0];
-          long dispInity = ((float) * (command + 1)) * sin(angInit_rad) - location[1];
+          double angInit_rad = (pi / 180) * (-(*(command + 2)) + 90); /*convert initial angle from degrees to radians*/
+          double angInit_res = angInit_rad * (*(command + 5)); /*adjust initial angle in radians by input resolution*/
+          double angFinal_res = (pi / 180) * (-(*(command + 3)) + 90) * (*(command + 5)); /*convert final angle from degrees to radians then adjust by input resolution*/
+          long dispInitx = dimensions[0] * 0.5 + ((double) * (command + 1)) * cos(angInit_rad) - location[0];
+          long dispInity = ((double) * (command + 1)) * sin(angInit_rad) - location[1];
           line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
           for (int i = angInit_res; i <= angFinal_res; i++) { /*move from initial to final angle*/
-            int dx = round(-(*(command + 1)) / (*(command + 5)) * sin((float)i / (*(command + 5)))); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
-            int dy = round((*(command + 1)) / (*(command + 5)) * cos((float)i / (*(command + 5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
+            int dx = round(-(*(command + 1)) / (*(command + 5)) * sin((double)i / (*(command + 5)))); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
+            int dy = round((*(command + 1)) / (*(command + 5)) * cos((double)i / (*(command + 5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
             line(dx, dy, *(command + 4)); /*draw small line, which represents part of circle/arc*/
           }
           /*the following code is a temporary addition to test location accuracy*/
@@ -560,8 +563,8 @@ void loop()
               long timed = endTime - startTime;
 
               /* Calculating total distance in metric */
-              //float distance = sqrt(sq(x) + sq(y))*PI*11.64;
-              //float spd = distance/timed;
+              //double distance = sqrt(sq(x) + sq(y))*PI*11.64;
+              //double spd = distance/timed;
 
               /* Saving information in appropriate arrays*/
               speedRuns[trialNum] = timed;
