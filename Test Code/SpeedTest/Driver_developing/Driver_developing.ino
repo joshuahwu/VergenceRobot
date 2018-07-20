@@ -125,16 +125,15 @@ void loadInfo() {
       char inputArray[vals.length() + 1];
       vals.toCharArray(inputArray, vals.length() + 1);
       double *coeffs = parseArray(inputArray);
-      Serial.println(*coeffs);
-      //      delay(2000);
+      //Serial.println(*coeffs);
       //      for (int i=0; i<(*(coeffs + 1)); i++){
       //        Serial.println(*(coeffs + (i+2)), 4);
       //      }
 
       if (*coeffs == 2) {
-        Serial.println("Exit");
         break;
       }
+      Serial.println("Send");
     }
   }
 }
@@ -161,10 +160,12 @@ double* parseArray(char strInput[]) {
     valsNew[0] = 2;
     valsNew[1] = 12;
     int i = 2;
+    //Serial.println("reverse_coeffs");
     while (strtokIn != NULL) {
       strtokIn = strtok(NULL, delim);
       valsNew[i++] = atof(strtokIn);
     }
+    //Serial.println("finished coeffs")
     for (i = 0; i < 12; i++) {
       reverse_coeffs[i] = valsNew[i + 2];
     }
@@ -369,15 +370,14 @@ void setup()
   Serial.println("Ready");
 
   loadInfo();
-  delay(500);
   Serial.println("Finished sending coeffs");
-  Serial.println(forward_coeffs[0]+forward_coeffs[1]);
+  //Serial.println(forward_coeffs[0]+forward_coeffs[1]);
 
-//  /* Determines dimensions */
-//  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
-//  /* Scales dimensions to be in terms of microsteps*/
-//  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
-//  dimensions[1] =  *(i + 1) * microsteps; //54624; /*y-dimension*/
+  /* Determines dimensions */
+  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
+  /* Scales dimensions to be in terms of microsteps*/
+  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
+  dimensions[1] =  *(i + 1) * microsteps; //54624; /*y-dimension*/
   
   digitalWrite(GREEN, LOW); /*turn off green*/
 }

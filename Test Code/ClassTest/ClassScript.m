@@ -1,5 +1,11 @@
-a = ExperimentClass('COM6');
-
+a = ExperimentClass('COM5');
+fscanf(a.connection,'%s')
+%fscanf(a.connection,'%s')
+%fscanf(a.connection,'%s')
+%fscanf(a.connection,'%s')
+%fscanf(a.connection,'%s')
+%fscanf(a.connection,'%s')
+% fscanf(a.connection,'%s')
 a.endSerial();
 
 
@@ -8,3 +14,4 @@ a.endSerial();
 % forward_coeffs = ones(4,4);
 %
 % save('params.mat','forward_coeffs');
+

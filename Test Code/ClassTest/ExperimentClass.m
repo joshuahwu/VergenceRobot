@@ -31,20 +31,13 @@ classdef ExperimentClass
             params = load(obj.save_filename);
             obj.forward_coeffs = params.forward_coeffs;
             obj.reverse_coeffs = params.reverse_coeffs;
-            while(strcmp(fscanf(obj.connection,'%s'),'Send')~=1)
-                disp('Waiting to Send Coefficients');
-            end 
+            
             forward_coeffs = obj.forward_coeffs;
             sendCoeffs(obj, forward_coeffs);
-%             fscanf(obj.connection,'%s')
+
             reverse_coeffs = obj.reverse_coeffs;
             sendCoeffs(obj, reverse_coeffs);
-%             fscanf(obj.connection,'%s')
-%             fscanf(obj.connection,'%s')
-%             fscanf(obj.connection,'%s')
-%             fscanf(obj.connection,'%s')
-            obj.forward_coeffs
-            obj.reverse_coeffs
+            %fscanf(obj.connection,'%s')
         end
         
         function output = readSerial(obj,type)
@@ -227,9 +220,12 @@ classdef ExperimentClass
         %sends string to Arduino
         
         function sendCoeffs(obj, coeffs)
-            str = inputname(2)
+            while(strcmp(fscanf(obj.connection,'%s'),'Send')~=1)
+                disp('Waiting to Send Coefficients');
+            end 
+            str = inputname(2);
             strList = sprintf(':%d', coeffs);
-            strToSend = [str strList]
+            strToSend = [str strList];
             fprintf(obj.connection, strToSend)
         end
         
