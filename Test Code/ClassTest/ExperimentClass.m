@@ -186,10 +186,10 @@ classdef ExperimentClass < handle
         %% Calculating a given delay and converting to speed
         % coeff_array is a 4x4 array - rows and columns both representing exp2
         function [speed] = delayToSpeed(obj,delay,angle)
-            complex_coeffs = [obj.exp2(obj.forward_coeffs(1,:),delay),...
-                obj.exp2(obj.forward_coeffs(2,:),delay),...
-                obj.exp2(obj.forward_coeffs(3,:),delay),...
-                obj.exp2(obj.forward_coeffs(4,:),delay)];
+            complex_coeffs = [];
+            for i = 1:length(obj.forward_coeffs(:,1))
+                complex_coeffs(i) = obj.exp2(obj.forward_coeffs(i,:),delay);
+            end
             speed = obj.exp2(complex_coeffs,angle);
         end
         
