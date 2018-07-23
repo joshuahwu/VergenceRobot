@@ -32,11 +32,11 @@ classdef ExperimentClass < handle
             obj.forward_coeffs = params.forward_coeffs;
             obj.reverse_coeffs = params.reverse_coeffs;
             
-            forward_coeffs = obj.forward_coeffs;
-            sendCoeffs(obj, forward_coeffs);
-
-            reverse_coeffs = obj.reverse_coeffs;
-            sendCoeffs(obj, reverse_coeffs);
+%             forward_coeffs = obj.forward_coeffs;
+%             sendCoeffs(obj, forward_coeffs);
+% 
+%             reverse_coeffs = obj.reverse_coeffs;
+%             sendCoeffs(obj, reverse_coeffs);
             %fscanf(obj.connection,'%s')
         end
         
@@ -117,7 +117,7 @@ classdef ExperimentClass < handle
             delays = delayi:ddelay:delayf;
             x = zeros(angleTrials,delayTrials);
             y = zeros(angleTrials,delayTrials);
-            speedCount = 0;
+            delayCount = 0;
             
             % Keep doing calculations until waitSignal=Done and then break;
             while(1)
@@ -129,18 +129,18 @@ classdef ExperimentClass < handle
                     % When waitSignal=Sending, prepare to read data
                     for i=1:angleTrials
                         timeRead = fscanf(obj.connection,'%d')
-                        time(i,speedCount+1) = timeRead;
-                        x(i,speedCount+1) = fscanf(obj.connection,'%d');
-                        y(i,speedCount+1) = fscanf(obj.connection,'%d');
+                        time(i,delayCount+1) = timeRead;
+                        x(i,delayCount+1) = fscanf(obj.connection,'%d');
+                        y(i,delayCount+1) = fscanf(obj.connection,'%d');
                     end
-                    speedCount=speedCount+1;
+                    delayCount=delayCount+1
                 end
             end
             
             % Euclidean speed
-            speedArray = sqrt(x.^2+y.^2)./(time./1000); %in steps/s measured
+            speedArray = sqrt(x.^2+y.^2)./(time./1000) %in steps/s measured
             % Convert x and y distance to angle in degrees
-            angles = atan(y(1:angleTrials,1)./x(1:angleTrials,1))*180/pi;
+            angles = atan(y(1:angleTrials,1)./x(1:angleTrials,1))*180/pi
             
             %% Finding model of delay to speed
             % For each delay finds the coefficients of a 2-term exponential model of
@@ -178,15 +178,17 @@ classdef ExperimentClass < handle
                 reverse_coeffs(i,:) = [f.p1,f.p2,f.p3];
             end
             
+            obj.SpeedArray = SpeedArray;
+            obj.angles = angles;
             obj.forward_coeffs = forward_coeffs;
             obj.reverse_coeffs = reverse_coeffs;
-            save(obj.save_filename,'forward_coeffs','reverse_coeffs');
+            save(obj.save_filename,'SpeedArray', 'angles', 'forward_coeffs','reverse_coeffs');
         end
         
         %% Calculating a given delay and converting to speed
         % coeff_array is a 4x4 array - rows and columns both representing exp2
         function [speed] = delayToSpeed(obj,delay,angle)
-            complex_coeffs = [];
+            complex_coeffs = zeros(size(obj.forward_coeffs));
             for i = 1:length(obj.forward_coeffs(:,1))
                 complex_coeffs(i) = obj.exp2(obj.forward_coeffs(i,:),delay);
             end
@@ -197,21 +199,20 @@ classdef ExperimentClass < handle
         % coeff_array is a 4x3 array - rows representing exp2, columns representing
         % poly2
         function [delay] = speedToDelay(obj,speed,angle)
-            complex_coeffs = [obj.poly2(obj.reverse_coeffs(1,:),angle),...
-                obj.poly2(obj.reverse_coeffs(2,:),angle),...
-                obj.poly2(obj.reverse_coeffs(3,:),angle),...
-                obj.poly2(obj.reverse_coeffs(4,:),angle)];
+            complex_coeffs = zeros(size(obj.reverse_coeffs));
+            for i = 1:length(obj.reverse_coeffs(:,1))
+                complex_coeffs(i) = obj.poly2(obj.reverse_coeffs(i,:),angle);
+            end
             delay = obj.exp2(complex_coeffs,speed);
         end
-        
         %% 2nd Degree Polynomial
         function [output] = poly2(obj,coeffs,x)
             output = coeffs(1).*x.^2 + coeffs(2).*x.^2 + coeffs(3);
         end
         
-        function [output] = fourier3(obj,coeffs,x)
-            output = coeffs(1) + coeffs(2).*cos(x.*coeffs(6))
-        end
+%         function [output] = fourier3(obj,coeffs,x)
+%             output = coeffs(1) + coeffs(2).*cos(x.*coeffs(6))
+%         end
         
         %% Two-Term Exponential Function
         function [output] = exp2(obj,coeffs,x)
@@ -224,13 +225,13 @@ classdef ExperimentClass < handle
         %sends string to Arduino
         
         function sendCoeffs(obj, coeffs)
-            while(strcmp(fscanf(obj.connection,'%s'),'Send')~=1)
+            while(strcmp(fscanf(obj.connection,'%s'),'Send')==1)
                 disp('Waiting to Send Coefficients');
             end 
             str = inputname(2);
             strList = sprintf(':%d', coeffs);
             strToSend = [str strList];
-            fprintf(obj.connection, strToSend)
+            fprintf(obj.connection, strToSend);
         end
         
     end
