@@ -1,5 +1,3 @@
-clear; clc;
-
 load('timeTrials.mat');
 load('xVals.mat');
 load('yVals.mat');
@@ -7,12 +5,13 @@ load('yVals.mat');
 %additiveDistance = x+y;
 %speeda = additiveDistance./(time./1000); %steps per second
 speedm = sqrt(x.^2+y.^2)./(time./1000);
-delays = [40:10:150]; %microseconds
+
+delays = 15:5:65; %microseconds
 
 delayArray = repmat(delays,11,1);
-speedArray = reshape(speedm,11,12);
+speedArray = reshape(speedm,11,14);
 angles = atan(y./x)*180/pi;
-anglesi = angles(1:11);
+anglesA = angles(1:14);
 
 ang1 = speedArray(:,1);
 ang2 = speedArray(:,2);
@@ -21,26 +20,26 @@ del1 = speedArray(1,:);
 del2 = speedArray(2,:);
 del3 = speedArray(3,:);
 
-coeffs_delays = zeros(length(anglesi),4);
-for i = 1:numel(anglesi)
+coeffs_delays = zeros(length(anglesA),4);
+for i = 1:numel(anglesA)
     f = fit(transpose(speedArray(i,:)),transpose(delays),'exp2');
     coeffs_delays(i,:) = [f.a,f.b,f.c,f.d];
 end
 
 coeffs_angles = zeros(length(delays),4);
 for i = 1:length(delays)
-    f = fit(speedArray(:,i),anglesi,'exp2');
+    f = fit(speedArray(:,i),anglesA,'exp2');
     coeffs_angles(i,:) = [f.a,f.b,f.c,f.d];
 end
 
 secondary_coeffs = zeros(4,3);
 for i = 1:4
-    f = fit(anglesi,coeffs_delays(:,i),'poly2');
+    f = fit(anglesA,coeffs_delays(:,i),'poly2');
     secondary_coeffs(i,:) = [f.p1,f.p2,f.p3];
 end
 
-angles = anglesi
-anglesi = linspace(0,45,12);
+%angles = anglesi
+anglesB = angles(1:11);
 
 % coefficients with respect to delays
 aa = coeffs_angles(:,1);

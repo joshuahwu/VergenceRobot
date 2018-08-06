@@ -1,11 +1,10 @@
 classdef ExperimentClass < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+
     properties
         connection
         forward_coeffs = zeros(4,4);
-        reverse_coeffs = zeros(4,3);
-        save_filename = 'params.mat';
+        reverse_coeffs = zeros(4,4);
+        save_filename = 'parameters.mat';
     end
     
     methods
@@ -18,26 +17,32 @@ classdef ExperimentClass < handle
             set(obj.connection,'BaudRate',9600);
             set(obj.connection,'Parity','none');
             fopen(obj.connection);
-            a = 'b';
-            while (a~='a')
-                a=fread(obj.connection,1,'uchar');
+            SerialInit = 'b';
+            while (SerialInit~='a')
+                SerialInit=fread(obj.connection,1,'uchar'); %be ready to receive any incoming data
+                %MATLAB should receive "Type the letter a, then hit enter."
             end
-            if (a=='a')
+            if (SerialInit=='a')
                 disp('Serial read');
             end
-            fprintf(obj.connection,'%c','a');
-            mbox = msgbox('Serial Communication setup'); uiwait(mbox);
-            fscanf(obj.connection,'%u');
-            params = load(obj.save_filename);
-            obj.forward_coeffs = params.forward_coeffs;
-            obj.reverse_coeffs = params.reverse_coeffs;
+            fprintf(obj.connection,'%c','a'); %MATLAB sending 'a'
+            %response to Arduino's "Type the letter a, then hit enter."
+            %equivalent of typing 'a' into Serial monitor
             
-%             forward_coeffs = obj.forward_coeffs;
-%             sendCoeffs(obj, forward_coeffs);
-% 
-%             reverse_coeffs = obj.reverse_coeffs;
-%             sendCoeffs(obj, reverse_coeffs);
-            %fscanf(obj.connection,'%s')
+            mbox = msgbox('Serial Communication setup'); uiwait(mbox);
+            fscanf(obj.connection,'%u');%MATLAB should receive "Ready";
+            
+            parameters = load(obj.save_filename);
+            obj.forward_coeffs = parameters.forward_coeffs;
+            obj.reverse_coeffs = parameters.reverse_coeffs;
+
+            forward_coeffs = obj.forward_coeffs;
+            sendCoeffs(obj, forward_coeffs) %MATLAB sending forward coefficients to Arduino
+             
+            reverse_coeffs = obj.reverse_coeffs;
+            sendCoeffs(obj, reverse_coeffs) %MATLAB sending reverse coefficients to Arduino
+            
+            fscanf(obj.connection,'%s') %read from Arduino; what is this supposed to read?
         end
         
         function output = readSerial(obj,type)
@@ -51,7 +56,7 @@ classdef ExperimentClass < handle
             % will oscillate the number of times as repetitions. Resolution represents
             % the step size for drawing of a pathway. Movement at the 10% edges are
             % slowed down.
-            fprintf(obj.connection,['oscillate:%d:%d:%d:%d:%d:%d:%d'],...
+            fprintf(obj.connection,('oscillate:%d:%d:%d:%d:%d:%d:%d'),...
                 [x0,y0,x1,y1,speed,repetitions,resolution]);
             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
                 disp('Waiting Linear Oscillate Trial')
@@ -72,7 +77,7 @@ classdef ExperimentClass < handle
         %% Move
         function moveTo(obj,x,y,hold)
             % Moves target to (x,y) and holds for designated milliseconds
-            fprintf(obj.connection,['move:%d:%d:%d'],[x,y,hold]);
+            fprintf(obj.connection,('move:%d:%d:%d'),[x,y,hold]);
             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
                 disp('Waiting Linear Move Trial')
             end
@@ -82,7 +87,7 @@ classdef ExperimentClass < handle
         function arc(obj,radius,angInit,angFinal,speed,res)
             % Moves target in an arc specified by radius and initial and final
             % angles
-            fprintf(obj.connection,['arc:%d:%d:%d:%d:%d'],...
+            fprintf(obj.connection,('arc:%d:%d:%d:%d:%d'),...
                 [radius,angInit,angFinal,speed,res]);
             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
                 disp('Waiting Arc Move Trial')
@@ -99,15 +104,15 @@ classdef ExperimentClass < handle
                 obj,delayi,delayf,ddelay,angleTrials)
             
             % Communicate with Arduino all the variables
-            fprintf(obj.connection,['SpeedModeling:%d:%d:%d:%d'],...
+            fprintf(obj.connection,('SpeedModeling:%d:%d:%d:%d'),...
                 [delayi,delayf,ddelay,angleTrials]);
             % while Beginning is being sent from Arduino, print given message
-            while(strcmp(fscanf(obj.connection,'%s'),'Beginning')~=1)
+            while(strcmp(fscanf(obj.connection,'%s'),'Beginning')==1)
                 disp('Waiting for Experiment Start')
             end
             
             % 1st read from Arduino: ddistance
-            ddistance = fscanf(obj.connection,'%d');
+            ddistance = fscanf(obj.connection,'%d')
             finalDistance = ddistance*angleTrials;
             delayTrials = floor((delayf-delayi)/ddelay + 1);
             
@@ -133,14 +138,18 @@ classdef ExperimentClass < handle
                         x(i,delayCount+1) = fscanf(obj.connection,'%d');
                         y(i,delayCount+1) = fscanf(obj.connection,'%d');
                     end
-                    delayCount=delayCount+1
+                    delayCount = delayCount+1
                 end
             end
             
             % Euclidean speed
-            speedArray = sqrt(x.^2+y.^2)./(time./1000) %in steps/s measured
+            speedArray = (sqrt(x.^2+y.^2)./(time./1000)) %in steps/second
+            speedArray_meters = (sqrt(x.^2+y.^2)./(time./1000)).*(0.037699./200) %in m/s measured
+            save('speed_steps','speedArray');
+            save('speed_meters','speedArraymeters');
             % Convert x and y distance to angle in degrees
             angles = atan(y(1:angleTrials,1)./x(1:angleTrials,1))*180/pi
+            save('angles','angles');
             
             %% Finding model of delay to speed
             % For each delay finds the coefficients of a 2-term exponential model of
@@ -170,21 +179,20 @@ classdef ExperimentClass < handle
                 coeffs_delays(i,:) = [f.a,f.b,f.c,f.d];
             end
             
-            % Models the columns in coeffs_delays with a 2nd degree polynomial with
+            % Models the columns in coeffs_delays with a 3rd degree polynomial with
             % respect to angles
-            reverse_coeffs = zeros(4,3);
+            reverse_coeffs = zeros(4,4);
             for i = 1:4
-                f = fit(angles,coeffs_delays(:,i),'poly2');
-                reverse_coeffs(i,:) = [f.p1,f.p2,f.p3];
-            end
+                f = fit(angles,coeffs_delays(:,i),'poly3');
+                reverse_coeffs(i,:) = [f.p1,f.p2,f.p3,f.p4];
+            end 
             
-            obj.SpeedArray = SpeedArray;
-            obj.angles = angles;
+%             obj.speedArray = speedArray;
+%             obj.angles = angles;
             obj.forward_coeffs = forward_coeffs;
             obj.reverse_coeffs = reverse_coeffs;
-            save(obj.save_filename,'SpeedArray', 'angles', 'forward_coeffs','reverse_coeffs');
+            save(obj.save_filename,'forward_coeffs','reverse_coeffs');
         end
-        
         %% Calculating a given delay and converting to speed
         % coeff_array is a 4x4 array - rows and columns both representing exp2
         function [speed] = delayToSpeed(obj,delay,angle)
@@ -196,23 +204,38 @@ classdef ExperimentClass < handle
         end
         
         %% Calculating input speed to a delay sent to Arduino
-        % coeff_array is a 4x3 array - rows representing exp2, columns representing
-        % poly2
+        % coeff_array is a 4x4 array - rows representing exp2, columns representing
+        % poly3
         function [delay] = speedToDelay(obj,speed,angle)
             complex_coeffs = zeros(size(obj.reverse_coeffs));
             for i = 1:length(obj.reverse_coeffs(:,1))
-                complex_coeffs(i) = obj.poly2(obj.reverse_coeffs(i,:),angle);
+                complex_coeffs(i) = obj.poly3(obj.reverse_coeffs(i,:),angle);
             end
             delay = obj.exp2(complex_coeffs,speed);
         end
+        
         %% 2nd Degree Polynomial
+        % not currently used
+        % not a good model for reverse_coeffs
         function [output] = poly2(obj,coeffs,x)
-            output = coeffs(1).*x.^2 + coeffs(2).*x.^2 + coeffs(3);
+            output = coeffs(1).*x.^2 + coeffs(2).*x + coeffs(3);
         end
         
-%         function [output] = fourier3(obj,coeffs,x)
-%             output = coeffs(1) + coeffs(2).*cos(x.*coeffs(6))
-%         end
+        %% 3rd Degree Polynomial
+        function [output] = poly3(obj,coeffs,x)
+            output = coeffs(1).*x.^3 + coeffs(2).*x.^2 + coeffs(3).*x + coeffs(4);
+        end 
+        
+        %% 2-term Fourier
+        % not currently used
+        % was tested as a model for reverse_coeffs
+        % slightly less accurate than 3rd degree polynommial
+        function [output] = fourier2(obj,coeffs,x)
+            output = coeffs(1) + coeffs(2).*cos(x.*coeffs(6)) +...
+                coeffs(3).*sin(x.*coeffs(6)) +...
+                coeffs(4).*cos(2.*x.*coeffs(6)) +... 
+                coeffs(5).*sin(2.*x.*coeffs(6));
+        end
         
         %% Two-Term Exponential Function
         function [output] = exp2(obj,coeffs,x)
@@ -225,13 +248,13 @@ classdef ExperimentClass < handle
         %sends string to Arduino
         
         function sendCoeffs(obj, coeffs)
-            while(strcmp(fscanf(obj.connection,'%s'),'Send')==1)
-                disp('Waiting to Send Coefficients');
+            while(strcmp(fscanf(obj.connection,'%s'),'AboutToSend')==1)
+                disp('Waiting to Send Coefficients')
             end 
-            str = inputname(2);
-            strList = sprintf(':%d', coeffs);
-            strToSend = [str strList];
-            fprintf(obj.connection, strToSend);
+            str = inputname(2)
+            strList = sprintf(':%d', coeffs)
+            strToSend = [str strList]
+            fprintf(obj.connection, strToSend)
         end
         
     end

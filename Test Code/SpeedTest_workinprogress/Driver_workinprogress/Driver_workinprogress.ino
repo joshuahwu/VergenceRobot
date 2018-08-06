@@ -13,7 +13,7 @@
 #define xMax 3
 #define yMin 4
 #define yMax 5
-/*pins for LED*/
+/*pins for RGB LED*/
 #define RED 48
 #define BLUE 49
 #define GREEN 50
@@ -30,10 +30,9 @@ int virtDimY = 50; /*max y dimension that can be inputted*/
 int vel = 60; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
 float pi = 3.14159265359; /*numerical value used for pi*/
 String val;
-String vals; /*String object to store inputs read from the Serial Connection*/
+String coeffsString; /*String object to store inputs read from the Serial Connection*/
 float forward_coeffs[16];
-float reverse_coeffs[12];
-//int xErr,yErr;
+float reverse_coeffs[16];
 
 
 /* parseCommand function: Parses command received from Serial Connection and returns designated inputs */
@@ -97,6 +96,9 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     return inputs;
 
   } else if (strcmp(fstr, "SpeedModeling") == 0) {
+    /*switch case
+       SpeedModeling:delayi:delayf:ddelay:angleTrials
+    */
     static double inputs[7];
     inputs[0] = 5;
     int i = 1;
@@ -107,68 +109,85 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     return inputs;
 
   } else { /*implement in any other case*/
-    /* Else return empty array */
     static double j[1];
     j[0] = 10000;
-    //Serial.println(j);
     return j;
   }
 }
 
+/*loadInfo function
+   receive forward_ & reverse_coeffs strings sent from MATLAB
+   parse coeffs
+   first string defined as pointer variable
+*/
 void loadInfo() {
-  Serial.println("Send");
-  while (1) {
-    vals = Serial.readString();
-    float valsNew;
-
-    if (vals != NULL) {
-      char inputArray[vals.length() + 1];
-      vals.toCharArray(inputArray, vals.length() + 1);
-      float *coeffs = parseArray(inputArray);
+  Serial.println("AboutToSend"); /*signal MATLAB to begin send coeffs*/
+  while (1) { /*loop through infinitely*/
+    coeffsString = Serial.readString();/*read characters from serial connection into String object*/
+    float coeffsArray;
+    /*this section of code is nearly identical to part of parseCommand function above*/
+    if (coeffsString != NULL) {
+      char inputArray[coeffsString.length() + 1];
+      coeffsString.toCharArray(inputArray, coeffsString.length() + 1);
+      float *coeffs = parseCoeffs(inputArray);
 
       //      delay(2000);
       //      for (int i=0; i<(*(coeffs + 1)); i++){
       //        Serial.println(*(coeffs + (i+2)), 4);
       //      }
 
-      if (*coeffs == 2) {
-        break;
+      if (*coeffs == 2) {/*if the reverse_coeffs has been received from MATLAB*/
+        break; /*break from the while loop*/
       }
     }
   }
 }
 
-float* parseArray(char strInput[]) {
+/*parseCoeffs function
+   parses coefficients sent through serial connection and returns coefficients array
+   method nearly identical to that used in parseCommand function
+*/
+float* parseCoeffs(char strInput[]) {
   const char delim[2] = ":";
   char * strtokIn;
   strtokIn = strtok(strInput, delim);
   if (strcmp(strtokIn, "forward_coeffs") == 0) {
-    static float valsNew[18];
-    valsNew[0] = 1;
-    valsNew[1] = 16;
+    static float coeffsArray[18]; /*preallocate space for designating forward or reverse coeffs and number of coefficients total*/
+    coeffsArray[0] = 1; /*corresponds to forward_coeffs*/
+    coeffsArray[1] = 16; /*16 coefficients in forward_coeffs*/
     int i = 2;
     while (strtokIn != NULL) {
       strtokIn = strtok(NULL, delim);
-      valsNew[i++] = atof(strtokIn);
+      coeffsArray[i++] = atof(strtokIn);
     }
     for (i = 0; i < 16; i++) {
-      forward_coeffs[i] = valsNew[i + 2];
+      forward_coeffs[i] = coeffsArray[i + 2];
     }
-    return valsNew;
+    return coeffsArray;
   } else if (strcmp(strtokIn, "reverse_coeffs") == 0) {
-    static float valsNew[14];
-    valsNew[0] = 2;
-    valsNew[1] = 12;
+    static float coeffsArray[18];
+    coeffsArray[0] = 2; /*corresponds to reverse_coeffs*/
+    coeffsArray[1] = 16; /*12 coefficients in reverse_coeffs*/
     int i = 2;
     while (strtokIn != NULL) {
       strtokIn = strtok(NULL, delim);
-      valsNew[i++] = atof(strtokIn);
+      coeffsArray[i++] = atof(strtokIn);
     }
-    for (i = 0; i < 12; i++) {
-      reverse_coeffs[i] = valsNew[i + 2];
+    for (i = 0; i < 16; i++) {
+      reverse_coeffs[i] = coeffsArray[i + 2];
     }
-    return valsNew;
+    return coeffsArray;
   }
+}
+
+double speedToDelay(double reverse_coeffs[], double Speed, double angle) {
+  double complex_coeffs[4];
+  for (int i = 0; i<=3; i++) {
+    double temp_coeff[4] = {reverse_coeffs[0 + i *4], reverse_coeffs[1 + i * 4], reverse_coeffs[2 + i * 4], reverse_coeffs[3 + i * 4]};
+    complex_coeffs[i] = poly3(temp_coeff, angle);
+  }
+  double Delay = exp2(complex_coeffs, Speed);
+  return Delay;
 }
 
 /*Function to calculate speed from given delay
@@ -177,27 +196,31 @@ float* parseArray(char strInput[]) {
 */
 double delayToSpeed(double forward_coeffs[], double Delay, double angle) {
   double complex_coeffs[4];
-  for (int i = 0; i <= 3; i++) {
-    double temp_coeff[4]={forward_coeffs[0+i*4],forward_coeffs[1+i*4],forward_coeffs[2+i*4],forward_coeffs[3+i*4]};
-    complex_coeffs[i] = exp2(temp_coeff, Delay);
+  for (int i = 0; i <= 3; i++) { /*loop through sets of 4 coefficients; correspond to a single function*/
+    double temp_coeff[4] = {forward_coeffs[0 + i * 4], forward_coeffs[1 + i * 4], forward_coeffs[2 + i * 4], forward_coeffs[3 + i * 4]};
+    complex_coeffs[i] = exp2(temp_coeff, Delay); /*get coefficients for nested exp2 equation*/
   }
-  double Speed = exp2(complex_coeffs, angle);
-          return Speed;
+  double Speed = exp2(complex_coeffs, angle); /*calculate speed, the output of the main exp2 equation*/
+  return Speed;
+}
+
+/*3rd degree polynomial function
+ * inputs: 1x4 coefficients array, independent variable (x)
+ * calculates scalar output of function
+ */
+double poly3(double coeffs[], double x) {
+  double output = coeffs[0]*pow(x,3) + coeffs[1]*pow(x,2) + coeffs[2]*x + coeffs[3];
+  return output;
 }
 
 /*2 term exponential function
    inputs: 1x4 coefficients array, independent variable (x)
-   calculate scalar output of function
+   calculates scalar output of function
 */
 double exp2(double coeffs[], double x) {
   double output = coeffs[0] * exp(coeffs[1] * x) + coeffs[2] * exp(coeffs[3] * x);
   return output;
 }
-
-/*formSpeedModel function
-  int delayToSpeedModel(forward_coeffs[], angle) {
-
-  }*/
 
 /*arcMove function:
   Inputs: radius = distance from center os monkey's eyes to target
@@ -373,22 +396,24 @@ void setup()
   pinMode(GREEN, OUTPUT);
   pinMode(BLUE, OUTPUT);
   /*initially, red & blue off, green on*/
-  digitalWrite(RED, LOW);
-  digitalWrite(BLUE, LOW);
-  digitalWrite(GREEN, HIGH);
+  /*since using common anode RGB LEDs
+     HIGH corresponds to off, LOW corresponds to on*/
+  digitalWrite(RED, HIGH); /*red off*/
+  digitalWrite(BLUE, HIGH); /*blue off*/
+  digitalWrite(GREEN, LOW); /*green on*/
   digitalWrite(yDir, direction);
   digitalWrite(xDir, direction);
   /*set serial data transmission rate*/
   Serial.begin(9600);
 
   /* Communicates with Serial connection to verify */
-  Serial.println("Type the letter a, then hit enter.");
+  Serial.println("Type the letter a, then hit enter."); /*Arduino Sending given message*/
   char serialInit = 'b';
   while (serialInit != 'a') /*while serialInit does not equal a, which is always since serialInit = b*/
   {
-    serialInit = Serial.read(); /*be ready to read incoming serial data*/
+    serialInit = Serial.read(); /*Arduino should receive 'a'; be ready to read incoming serial data*/
   }
-  Serial.println("Ready");
+  Serial.println("Ready"); /*ArdSend#2*/
 
   /* Determines dimensions */
   int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
@@ -397,11 +422,11 @@ void setup()
   dimensions[1] = *(i + 1) * microsteps; //54624; /*y-dimension*/
 
   /*TEMPORARY: Testing the speed model
-  int angleTrials = 10;
-  long minDim = min((long)(dimensions[0] / microsteps), (long)(dimensions[1] / microsteps));
-  int ddistance = (int) (0.9 * minDim / (angleTrials - 1));
-  int maxDistance = ddistance * (angleTrials - 1);
-  for (int i = 15; i <= 75; i += 5) {
+    int angleTrials = 10;
+    long minDim = min((long)(dimensions[0] / microsteps), (long)(dimensions[1] / microsteps));
+    int ddistance = (int) (0.9 * minDim / (angleTrials - 1));
+    int maxDistance = ddistance * (angleTrials - 1);
+    for (int i = 15; i <= 75; i += 5) {
     int Delay = i;
     for (int j = 0; j <= maxDistance; j += ddistance) {
       recalibrate(xMin);
@@ -415,20 +440,21 @@ void setup()
       long timed = endTime - startTime;
       long path = sqrt(pow(x, 2) + pow(y, 2));
       float sec = timed / 1000.0;
-      long speedA = path / sec;
+      long speedA = (path / sec) * (0.037699/200.0);
       double ang = atan((double) y / x) * (180 / pi);
       //Serial.println(path);
       //Serial.println(timed);
       //Serial.println(sec);
-      Serial.println("Delay: ");
-      Serial.println(i);
-      Serial.println("Angle: ");
+      Serial.print("Delay: ");
+      Serial.print(i);
+      Serial.print(" Angle: ");
       Serial.println(ang);
       Serial.println(speedA);
+      Serial.println(" m/s");
     }
-  }*/
-
-  //digitalWrite(GREEN, LOW); /*turn off green*/
+    }*/
+  loadInfo();
+  //digitalWrite(GREEN, HIGH);
 }
 
 
@@ -453,14 +479,14 @@ void loop()
     switch ((int) *command) { /*switch case based on first command*/
       case 1: // calibrate
         /* Calibrates to xMin and yMin and updates location to (0,0) */
-        digitalWrite(GREEN, HIGH);
+        digitalWrite(GREEN, LOW); /*turn on green*/
         xErr = recalibrate(xMin); /*xErr is number of steps from initial x-coordinate location to 0*/
         yErr = recalibrate(yMin); /*yErr is number of steps from initial y-coordinate location to 0*/
         location[0] = 0;
         location[1] = 0;
         Serial.println("Done");
         delay(1000);
-        digitalWrite(GREEN, LOW);
+        digitalWrite(GREEN, HIGH); /*turn off green*/
         break;
       case 2: // move:x0:y0:hold duration
         /* Simple move to designated location and holds for a certain time
@@ -469,11 +495,11 @@ void loop()
         dispx = (long) (*(command + 1) / virtDimX * dimensions[0]) - location[0]; /* Converting input virtual dimensions to microsteps*/
         dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
         /*move by designated vector displacement*/
+        digitalWrite(BLUE, LOW);/*turn on blue*/
         line(dispx, dispy, vel);
-        digitalWrite(BLUE, HIGH);
         Serial.println("Done");
         delay(*(command + 3)); /*delay by the specified hold duration*/
-        digitalWrite(BLUE, LOW);
+        digitalWrite(BLUE, HIGH);/*turn off blue*/
         break;
       case 3: // oscillate:x0:y0:x1:y1:speed:repetitions:resolution
         {
@@ -487,8 +513,8 @@ void loop()
           dispx = (long) (*(command + 1) / virtDimX * dimensions[0]) - location[0];
           dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
           /*move along calculated displacement vector from current location to desired starting point*/
+          digitalWrite(RED, LOW);/*turn on red*/
           line(dispx, dispy, vel);
-          digitalWrite(RED, HIGH);
           delay(1000);
           int maxSpeed = *(command + 5); /*max speed implemented is input speed from command*/
           int delta = *(command + 7); /*this does nothing right now...*/
@@ -532,7 +558,7 @@ void loop()
               line(-dtx, -dty, a);
             }
           }
-          digitalWrite(RED, LOW);
+          digitalWrite(RED, HIGH);/*turn off red*/
           Serial.println("Done");
           delay(2000);
         }
@@ -563,7 +589,7 @@ void loop()
           //Serial.println(yErr); /*number of steps to return to y=0*/
         }
         break;
-      case 5: //SpeedModeling:delayi,delayf,ddelay,angleTrials
+      case 5: //SpeedModeling:delayi:delayf:ddelay:angleTrials
         {
           /* Speed Trials
              Still needs testing
