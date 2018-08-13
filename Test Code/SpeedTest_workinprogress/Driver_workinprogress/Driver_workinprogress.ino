@@ -20,19 +20,20 @@
 
 /* Defining initial variables and arrays */
 int direction = 1; /*viewing from behind motor, with shaft facing away, 1 = clockwise, 0 = counterclockwise*/
-unsigned long microsteps = 16; /*divides the steps per revolution by this number, corresponds to microstepping settings on stepper driver, 16 corresponds to 3200 pulse/rev*/
+unsigned long microsteps = 16; /*divides the steps per revolution by this number, determined by microstepping settings on stepper driver, 16 corresponds to 3200 pulse/rev*/
 unsigned long dimensions[2] = {30000 * microsteps, 30000 * microsteps}; /*preallocating dimensions to previously measured values*/
 unsigned long location[2] = {0, 0}; /*presetting location*/
 /*arbitrary upper limit for location input, with lower limit of 0*/
 int virtDimX = 100; /* max x dimension that can be inputted*/
 int virtDimY = 50; /*max y dimension that can be inputted*/
 
-int vel = 60; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
+int vel = 30; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
 float pi = 3.14159265359; /*numerical value used for pi*/
-String val;
-String coeffsString; /*String object to store inputs read from the Serial Connection*/
-float forward_coeffs[16];
-float reverse_coeffs[16];
+String val; /*String object to store inputs read from the Serial Connection*/
+String coeffsString; /*String object to store speed model coefficients sent from MATLAB*/
+float coeffsArray; /*for parsing speed model coefficients*/
+float forward_coeffs[16]; /*used in delayToSpeed function*/
+float reverse_coeffs[16]; /*used in speedToDelay function*/
 
 
 /* parseCommand function: Parses command received from Serial Connection and returns designated inputs */
@@ -85,7 +86,15 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     return inputs;
 
   } else if (strcmp(fstr, "arc") == 0) {
-    /*arc:radius:angInit:angFinal:vel:arcRes*/
+    /* Move in an arc
+      Numerical inputs:
+      radius - measured in steps, somewhat arbitrary at the moment
+      angInit - arc starts at this angle
+      angFinal - arc ends at this angle
+      vel - delay in microseconds for each line movement
+      arcRes - number of arc divisions
+      arc:radius:angInit:angFinal:vel:arcRes
+    */
     static double inputs[6];
     inputs[0] = 4;
     int i = 1;
@@ -117,26 +126,21 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
 
 /*loadInfo function
    receive forward_ & reverse_coeffs strings sent from MATLAB
-   parse coeffs
+   parse coeffs into designated arrays
    first string defined as pointer variable
+   once reverse_coeffs has been received, break from while loop
 */
 void loadInfo() {
-  Serial.println("AboutToSend"); /*signal MATLAB to begin send coeffs*/
+  Serial.println("ReadyToReceiveCoeffs"); /*signal MATLAB to begin send coeffs*/
   while (1) { /*loop through infinitely*/
     coeffsString = Serial.readString();/*read characters from serial connection into String object*/
-    float coeffsArray;
     /*this section of code is nearly identical to part of parseCommand function above*/
     if (coeffsString != NULL) {
       char inputArray[coeffsString.length() + 1];
       coeffsString.toCharArray(inputArray, coeffsString.length() + 1);
       float *coeffs = parseCoeffs(inputArray);
-
-      //      delay(2000);
-      //      for (int i=0; i<(*(coeffs + 1)); i++){
-      //        Serial.println(*(coeffs + (i+2)), 4);
-      //      }
-
       if (*coeffs == 2) {/*if the reverse_coeffs has been received from MATLAB*/
+        Serial.println("CoeffsReceived");
         break; /*break from the while loop*/
       }
     }
@@ -167,7 +171,7 @@ float* parseCoeffs(char strInput[]) {
   } else if (strcmp(strtokIn, "reverse_coeffs") == 0) {
     static float coeffsArray[18];
     coeffsArray[0] = 2; /*corresponds to reverse_coeffs*/
-    coeffsArray[1] = 16; /*12 coefficients in reverse_coeffs*/
+    coeffsArray[1] = 16; /*16 coefficients in reverse_coeffs*/
     int i = 2;
     while (strtokIn != NULL) {
       strtokIn = strtok(NULL, delim);
@@ -180,10 +184,15 @@ float* parseCoeffs(char strInput[]) {
   }
 }
 
+/*Function to calculate delay from given speed
+   likely the more useful than delayToSpeed
+   inputs: reverse coefficients array, speed, angle
+   calculate delay using 3rd degree polynomials nested in 2-term exponential
+*/
 double speedToDelay(double reverse_coeffs[], double Speed, double angle) {
   double complex_coeffs[4];
-  for (int i = 0; i<=3; i++) {
-    double temp_coeff[4] = {reverse_coeffs[0 + i *4], reverse_coeffs[1 + i * 4], reverse_coeffs[2 + i * 4], reverse_coeffs[3 + i * 4]};
+  for (int i = 0; i <= 3; i++) {
+    double temp_coeff[4] = {reverse_coeffs[0 + i * 4], reverse_coeffs[1 + i * 4], reverse_coeffs[2 + i * 4], reverse_coeffs[3 + i * 4]};
     complex_coeffs[i] = poly3(temp_coeff, angle);
   }
   double Delay = exp2(complex_coeffs, Speed);
@@ -205,11 +214,11 @@ double delayToSpeed(double forward_coeffs[], double Delay, double angle) {
 }
 
 /*3rd degree polynomial function
- * inputs: 1x4 coefficients array, independent variable (x)
- * calculates scalar output of function
- */
+   inputs: 1x4 coefficients array, independent variable (x)
+   calculates scalar output of function
+*/
 double poly3(double coeffs[], double x) {
-  double output = coeffs[0]*pow(x,3) + coeffs[1]*pow(x,2) + coeffs[2]*x + coeffs[3];
+  double output = coeffs[0] * pow(x, 3) + coeffs[1] * pow(x, 2) + coeffs[2] * x + coeffs[3];
   return output;
 }
 
@@ -243,7 +252,6 @@ void arcMove(float radius, float angInit, float angFinal, int velArc, int arcRes
     line(dx, dy, velArc); /*draw small line, which represents part of circle/arc*/
   }
 }
-
 
 /* findDimensions function:
    Moves to xMax from current location then to xMin and counts the number of steps it took
@@ -413,48 +421,16 @@ void setup()
   {
     serialInit = Serial.read(); /*Arduino should receive 'a'; be ready to read incoming serial data*/
   }
-  Serial.println("Ready"); /*ArdSend#2*/
 
-  /* Determines dimensions */
+  /* Determines dimensions by moving from xmax to xmin, then ymax to ymin*/
   int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
   /* Scales dimensions to be in terms of microsteps*/
   dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
   dimensions[1] = *(i + 1) * microsteps; //54624; /*y-dimension*/
 
-  /*TEMPORARY: Testing the speed model
-    int angleTrials = 10;
-    long minDim = min((long)(dimensions[0] / microsteps), (long)(dimensions[1] / microsteps));
-    int ddistance = (int) (0.9 * minDim / (angleTrials - 1));
-    int maxDistance = ddistance * (angleTrials - 1);
-    for (int i = 15; i <= 75; i += 5) {
-    int Delay = i;
-    for (int j = 0; j <= maxDistance; j += ddistance) {
-      recalibrate(xMin);
-      recalibrate(yMin);
-      delay(1000);
-      int x = maxDistance;
-      int y = j;
-      long startTime = millis();
-      line((long) x * microsteps, (long) y * microsteps, Delay);
-      long endTime = millis();
-      long timed = endTime - startTime;
-      long path = sqrt(pow(x, 2) + pow(y, 2));
-      float sec = timed / 1000.0;
-      long speedA = (path / sec) * (0.037699/200.0);
-      double ang = atan((double) y / x) * (180 / pi);
-      //Serial.println(path);
-      //Serial.println(timed);
-      //Serial.println(sec);
-      Serial.print("Delay: ");
-      Serial.print(i);
-      Serial.print(" Angle: ");
-      Serial.println(ang);
-      Serial.println(speedA);
-      Serial.println(" m/s");
-    }
-    }*/
   loadInfo();
-  //digitalWrite(GREEN, HIGH);
+  Serial.println("Ready");
+  digitalWrite(GREEN, HIGH);
 }
 
 
@@ -576,17 +552,6 @@ void loop()
             int dy = round((*(command + 1)) / (*(command + 5)) * cos((float)i / (*(command + 5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
             line(dx, dy, *(command + 4)); /*draw small line, which represents part of circle/arc*/
           }
-          /*the following code is a temporary addition to test location accuracy*/
-          //Serial.print("xloc:");
-          //Serial.print(location[0]/16); /*final x-location in steps*/
-          //Serial.print("; yloc:");
-          //Serial.println(location[1]/16); /*final y-location in steps*/
-          //xErr = recalibrate(xMin);
-          //yErr = recalibrate(yMin);
-          //Serial.print("x steps:");
-          //Serial.print(xErr); /*number of steps to return to x=0*/
-          //Serial.print("; y steps:");
-          //Serial.println(yErr); /*number of steps to return to y=0*/
         }
         break;
       case 5: //SpeedModeling:delayi:delayf:ddelay:angleTrials
@@ -605,13 +570,11 @@ void loop()
           /*determine divisions of 90% of min dimension*/
           int ddistance = (int) (0.9 * minDim / (angleTrials - 1));
           int maxDistance = ddistance * (angleTrials - 1);
-          //maxDistance = (int) *(command+5);
-          //ddistance = (int) *(command+6);
           Serial.println("Beginning");
           Serial.println(ddistance);
 
           /* Number of loops for speed and angles*/
-          int delaytrials = (int) ((delayf - delayi) / ddelay + 1); /*nothing for now*/
+          int delaytrials = (int) ((delayf - delayi) / ddelay + 1); /*does nothing for now*/
 
           /* Intialize loop arrays that will be sent over*/
           unsigned long speedRuns[angleTrials];
@@ -624,35 +587,28 @@ void loop()
             Serial.println("Delay");
             /* Angle Loop */
             for (int i = 0; i <= maxDistance; i += ddistance) {
-              recalibrate(xMin);
+              recalibrate(xMax);
               recalibrate(yMin);
               delay(1000);
-              int x = maxDistance; // Steps
+              int x = -maxDistance; // Steps
               int y = i;
 
               /* Calculate how long it takes to move to specified position at specified delayMicroseconds */
               long startTime = millis();
               line((long) x * microsteps, (long) y * microsteps, maxDelay);
               long endTime = millis();
-              //int index = (int) (j/2) - 3;
               long timed = endTime - startTime;
-
-              /* Calculating total distance in metric */
-              //float distance = sqrt(sq(x) + sq(y))*PI*11.64;
-              //float spd = distance/timed;
 
               /* Saving information in appropriate arrays*/
               speedRuns[trialNum] = timed;
               xDistance[trialNum] = x;
               yDistance[trialNum] = y;
               trialNum++;
-
-              //Serial.println(timed);
-              //Serial.println(a);
               delay(2000);
             }
 
-            /*Send x and y distances and time after each delay trial*/
+            /*Send x and y distances and time after each delay trial
+              used to calculate Euclidean speed in MATLAB*/
             Serial.println("Sending");
             for (int i = 0; i < angleTrials; i++) {
               Serial.println(speedRuns[i]);

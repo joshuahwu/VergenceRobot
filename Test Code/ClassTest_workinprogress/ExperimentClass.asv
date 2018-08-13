@@ -40,7 +40,7 @@ classdef ExperimentClass < handle
             forward_coeffs = obj.forward_coeffs;
             reverse_coeffs = obj.reverse_coeffs;
             
-             %% communication testing
+%             %% communication testing 1
 %             % Send coefficients from MATLAB to Arduino 
 %             while (1)
 %                 startSignal = fscanf(obj.connection, '%s')
@@ -161,6 +161,8 @@ classdef ExperimentClass < handle
             end
             
             % compute Euclidean speed
+            speedArray = zeros(numel(angleTrials),numel(delayTrials));
+            speedArray_meters = zeros(numel(angleTrials),numel(delayTrials));
             speedArray = (sqrt(x.^2+y.^2)./(time./1000)); %in steps/second
             speedArray_meters = (sqrt(x.^2+y.^2)./(time./1000)).*(0.037699./200); %speedArray converted to m/s 
             save('speed_steps','speedArray');

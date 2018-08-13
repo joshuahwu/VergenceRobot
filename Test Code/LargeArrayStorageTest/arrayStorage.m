@@ -3,7 +3,7 @@
 comPort = serial('COM8','BaudRate',9600);
 fopen(comPort);
 % while Beginning is being sent from Arduino, print given message
-while(strcmp(fscanf(comPort,'%s'),'Beginning')~=1)
+while(strcmp(fscanf(comPort,'%s'),'Beginning')==1)
     disp('Waiting for Experiment Start')
 end
 
