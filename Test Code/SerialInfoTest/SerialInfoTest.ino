@@ -1,5 +1,7 @@
 //Initialization
-#define ledPin 13
+#define RED 48
+#define BLUE 49
+#define GREEN 50
 String vals;
 
 float* parseArray(char strInput[]) {
@@ -31,7 +33,12 @@ float* parseArray(char strInput[]) {
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(ledPin, OUTPUT);
+  pinMode(RED, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+  pinMode(BLUE, OUTPUT);
+  pinMode(RED, LOW);
+  pinMode(GREEN, LOW);
+  pinMode(BLUE, LOW);
   Serial.begin(9600);
 }
 
@@ -40,6 +47,13 @@ void loop() {
   float valsNew;
 
   if (vals != NULL) {
+    for (int i = 0; i <= 4; i++){
+      pinMode(GREEN, HIGH);
+      delay(1000);
+      pinMode(GREEN, LOW);
+      delay(1000);
+      Serial.println(i);
+    }
     char inputArray[vals.length() + 1];
     vals.toCharArray(inputArray, vals.length() + 1);
     float *forward_coeffs = parseArray(inputArray);

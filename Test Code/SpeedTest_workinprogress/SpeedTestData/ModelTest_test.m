@@ -14,9 +14,9 @@
 %speeda = additiveDistance./(time./1000); % steps per second
 %speedCalc = sqrt(x.^2+y.^2)./(time./1000); % Euclidean speed in steps per second
 
-delays = 15:5:65; % vector of experimental delays in microseconds
-speedArray = speedArray(1:11,1:11);
-speedArrayTest = speedArraymeters./(0.037699./200);
+delays = 15:5:60; % vector of experimental delays in microseconds
+%speedArray = speedArray(1:10,1:11);
+speedArrayTest = speedArray;%speedArraymeters./(0.037699./200);
 %speedArray = reshape(speedCalc,12,11); % reshape array to 12 x 11 matrix; delays are similar; angles are different
 %anglesCalc = atan(y./x)*180/pi; % vector of angles calculated from position movements
 %angles = anglesCalc(1:11);
@@ -56,12 +56,12 @@ end
 % outer function
 % x-data: angles
 % y-data: coeffs_delays
-% *This is the one we want to improve!*
-% *Try Fourier & 3rd degree polynomial instead of 2nd degree polynomial*
-reverse_coeffs = zeros(4,3);
+% for each 
+% 
+reverse_coeffs = zeros(4,4);
 for i = 1:4
-    f = fit(angles,coeffs_delays(:,i),'poly2');
-    reverse_coeffs(i,:) = [f.p1,f.p2,f.p3];
+    f = fit(angles,coeffs_delays(:,i),'poly3');
+    reverse_coeffs(i,:) = [f.p1,f.p2,f.p3,f.p4];
 end
 
 % coefficients with respect to delays
@@ -80,6 +80,7 @@ delB = coeffs_delays(:,2);
 delC = coeffs_delays(:,3);
 delD = coeffs_delays(:,4);
 
+Delays = speedToDelay(reverse_coeffs,speedArray,angles
 %% Functions
 % none of which are currently used in this script
 
@@ -95,17 +96,17 @@ end
 % coeff_array is reverse_coeffs
 % *This is the one we want to improve!*
 function [output] = speedToDelay(coeff_array,speed,angle)
-complex_coeffs = [poly2(coeff_array(1,:),angle),...
-    poly2(coeff_array(2,:),angle),...
-    poly2(coeff_array(3,:),angle),...
-    poly2(coeff_array(3,:),angle)];
+complex_coeffs = [poly3(coeff_array(1,:),angle),...
+    poly3(coeff_array(2,:),angle),...
+    poly3(coeff_array(3,:),angle),...
+    poly3(coeff_array(3,:),angle)];
 output = exp2(complex_coeffs,speed);
 end
 
 % Outer function: 2nd degree polynomial
 % currently (hopefully will change) used to generate outer reverse_coeffs
-function [output] = poly2(coeffs,x)
-output = coeffs(1).*x.^2 + coeffs(2).*x + coeffs(3);
+function [output] = poly3(coeffs,x)
+output = coeffs(1).*x.^3 + coeffs(2).*x.^2 + coeffs(3).*x + coeffs(4);
 end
 
 % Outer function: 2-term exponential

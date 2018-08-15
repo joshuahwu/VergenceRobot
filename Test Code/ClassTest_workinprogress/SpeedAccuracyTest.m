@@ -1,4 +1,4 @@
-delays = 15:5:65;
+delays = 15:5:60;
 testSpeeds = zeros(numel(delays),numel(angles));
 for i = 1:numel(delays)
     for j = 1:numel(angles)
@@ -24,6 +24,6 @@ end
 testDelays = zeros(numel(delays),numel(angles));
 for i = 1:numel(delays)
     for j = 1:numel(angles)
-    testDelays(i,j) = a.speedToDelaypoly3(speedArray(j,i),angles(j));
+    testDelays(i,j) = a.speedToDelay(speedArray(j,i),angles(j));
     end
 end 

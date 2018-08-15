@@ -1,6 +1,5 @@
-comPort = serial('COM6','BaudRate',9600);
+comPort = serial('COM8','BaudRate',9600);
 fopen(comPort);
-pause(2);
 
 forward_coeffs = rand(4,4);
 reverse_coeffs = rand(4,3);

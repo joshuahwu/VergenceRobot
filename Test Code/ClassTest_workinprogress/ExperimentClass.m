@@ -53,8 +53,8 @@ classdef ExperimentClass < handle
 %                 end 
 %             end 
                 
-            sendCoeffs(obj, forward_coeffs)
-            sendCoeffs(obj, reverse_coeffs)
+%             sendCoeffs(obj, forward_coeffs)
+%             sendCoeffs(obj, reverse_coeffs)
             
             fscanf(obj.connection,'%s') %read from Arduino; should receive "Ready"
         end
@@ -278,7 +278,7 @@ classdef ExperimentClass < handle
           while (strcmp(fscanf(obj.connection,'%s'),'CoeffsReceived') == 1)
               disp('Coefficients Received by Arduino');
           end
-            %fscanf(obj.connection, '%s')         
+            fscanf(obj.connection, '%s')         
         end
        
     end

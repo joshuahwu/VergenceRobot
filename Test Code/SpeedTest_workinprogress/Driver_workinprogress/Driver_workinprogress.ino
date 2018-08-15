@@ -27,7 +27,7 @@ unsigned long location[2] = {0, 0}; /*presetting location*/
 int virtDimX = 100; /* max x dimension that can be inputted*/
 int virtDimY = 50; /*max y dimension that can be inputted*/
 
-int vel = 30; /*default velocity for calibration and basic movement actions in terms of square pulse width (microseconds)*/
+int Delay = 30; /*default Delay for calibration and basic movement actions in terms of square pulse width (microseconds)*/
 float pi = 3.14159265359; /*numerical value used for pi*/
 String val; /*String object to store inputs read from the Serial Connection*/
 String coeffsString; /*String object to store speed model coefficients sent from MATLAB*/
@@ -91,9 +91,9 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
       radius - measured in steps, somewhat arbitrary at the moment
       angInit - arc starts at this angle
       angFinal - arc ends at this angle
-      vel - delay in microseconds for each line movement
+      Delay - delay in microseconds for each line movement
       arcRes - number of arc divisions
-      arc:radius:angInit:angFinal:vel:arcRes
+      arc:radius:angInit:angFinal:Delay:arcRes
     */
     static double inputs[6];
     inputs[0] = 4;
@@ -235,21 +235,21 @@ double exp2(double coeffs[], double x) {
   Inputs: radius = distance from center os monkey's eyes to target
   angInit = starting angle in degrees
   andFinal = final angle in degrees
-  velArc = speed of movement
+  delayArc = speed of movement
   moves to initial angle, then moves to final angle
   approximates a circle by drawing small lines
 */
-void arcMove(float radius, float angInit, float angFinal, int velArc, int arcRes) {
+void arcMove(float radius, float angInit, float angFinal, int delayArc, int arcRes) {
   float angInit_rad = (pi / 180) * (-angInit + 90); /*convert initial angle from degrees to radians*/
   float angInit_res = angInit_rad * arcRes; /*adjust initial angle in radians by input resolution*/
   float angFinal_res = (pi / 180) * (-angFinal + 90) * arcRes; /*convert final angle from degrees to radians then adjust by input resolution*/
   long dispInitx = 0.5 * dimensions[0] + ((float) radius) * cos(angInit_rad) - location[0];
   long dispInity = ((float) radius) * sin(angInit_rad) - location[1];
-  line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
+  line(dispInitx, dispInity, Delay); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
   for (int i = angInit_res; i <= angFinal_res; i++) { /*move from initial to final angle*/
     int dx = round(-radius / arcRes * sin((float)i / arcRes)); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
     int dy = round(radius / arcRes * cos((float)i / arcRes)); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
-    line(dx, dy, velArc); /*draw small line, which represents part of circle/arc*/
+    line(dx, dy, delayArc); /*draw small line, which represents part of circle/arc*/
   }
 }
 
@@ -281,13 +281,13 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
   int val = digitalRead(pin); /*read the pin, 0 = pressed, 1 = unpressed*/
   while (val) {
     if (pin == xMin) { /*if pin is xMin*/
-      line(-microsteps * 10, 0, vel); /*move in negative x-direction toward xMin*/
+      line(-microsteps * 10, 0, Delay); /*move in negative x-direction toward xMin*/
     } else if (pin == xMax) { /*if pin is xMax*/
-      line(microsteps * 10, 0, vel); /*move in positive x-direction toward xMax*/
+      line(microsteps * 10, 0, Delay); /*move in positive x-direction toward xMax*/
     } else if (pin == yMin) { /*if pin is yMin*/
-      line(0, -microsteps * 10, vel); /*move in negative y-direction toward yMin*/
+      line(0, -microsteps * 10, Delay); /*move in negative y-direction toward yMin*/
     } else if (pin == yMax) { /*if pin is yMax*/
-      line(0, microsteps * 10, vel); /*move in positive y-direction toward yMax*/
+      line(0, microsteps * 10, Delay); /*move in positive y-direction toward yMax*/
     }
     steps += 10; /*add 10 to steps counter*/
 
@@ -302,19 +302,19 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
     if (val == 0) { /*if switch is pressed*/
       while (val == 0) { /*while switch is pressed*/
         if (pin == xMin) {
-          line(microsteps, 0, vel); /*if xMin microswitch is pressed (if value read from pin is 0), move forward in x-direction*/
+          line(microsteps, 0, Delay); /*if xMin microswitch is pressed (if value read from pin is 0), move forward in x-direction*/
           location[0] = 0; /*update x-coordinate location to 0*/
           delay(200);
         } else if (pin == xMax) {
-          line(-microsteps, 0, vel); /*if xMax microswitch is pressed, move back in negative x-direction*/
+          line(-microsteps, 0, Delay); /*if xMax microswitch is pressed, move back in negative x-direction*/
           location[0] = dimensions[0]; /*update x-coordinate location to max x-dimension*/
           delay(200);
         } else if (pin == yMin) {
-          line(0, microsteps, vel); /*if yMin microswitch is pressed, move forward in y-direction*/
+          line(0, microsteps, Delay); /*if yMin microswitch is pressed, move forward in y-direction*/
           location[1] = 0; /*update y-coordinate location to 0*/
           delay(200);
         } else if (pin == yMax) {
-          line(0, -microsteps, vel); /*if yMax microswitch is pressed, move back in negative y-direction*/
+          line(0, -microsteps, Delay); /*if yMax microswitch is pressed, move back in negative y-direction*/
           location[1] = dimensions[1]; /*update y-coordinate location to max y-dimension*/
           delay(200);
         }
@@ -329,7 +329,7 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
 
 
 /* Implementation of Bresenham's Algorithm for a line
-   Input vector (in number of steps) along with pulse width (velocity/speed)
+   Input vector (in number of steps) along with pulse width (delay/speed)
    Proprioceptive location
 */
 void line(long x1, long y1, int v) { /*inputs: x-component of vector, y-component of vector, speed/pulse width*/
@@ -415,7 +415,8 @@ void setup()
   Serial.begin(9600);
 
   /* Communicates with Serial connection to verify */
-  Serial.println("Type the letter a, then hit enter."); /*Arduino Sending given message*/
+  Serial.println("a");
+  //Serial.println("Type the letter a, then hit enter."); /*Arduino Sending given message*/
   char serialInit = 'b';
   while (serialInit != 'a') /*while serialInit does not equal a, which is always since serialInit = b*/
   {
@@ -428,7 +429,7 @@ void setup()
   dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
   dimensions[1] = *(i + 1) * microsteps; //54624; /*y-dimension*/
 
-  loadInfo();
+  //loadInfo();
   Serial.println("Ready");
   digitalWrite(GREEN, HIGH);
 }
@@ -472,7 +473,7 @@ void loop()
         dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
         /*move by designated vector displacement*/
         digitalWrite(BLUE, LOW);/*turn on blue*/
-        line(dispx, dispy, vel);
+        line(dispx, dispy, Delay);
         Serial.println("Done");
         delay(*(command + 3)); /*delay by the specified hold duration*/
         digitalWrite(BLUE, HIGH);/*turn off blue*/
@@ -490,7 +491,7 @@ void loop()
           dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
           /*move along calculated displacement vector from current location to desired starting point*/
           digitalWrite(RED, LOW);/*turn on red*/
-          line(dispx, dispy, vel);
+          line(dispx, dispy, Delay);
           delay(1000);
           int maxSpeed = *(command + 5); /*max speed implemented is input speed from command*/
           int delta = *(command + 7); /*this does nothing right now...*/
@@ -539,14 +540,14 @@ void loop()
           delay(2000);
         }
         break;
-      case 4: // arc:radius:angInit:angFinal:velArc:arcRes
+      case 4: // arc:radius:angInit:angFinal:delayArc:arcRes
         {
           float angInit_rad = (pi / 180) * (-(*(command + 2)) + 90); /*convert initial angle from degrees to radians*/
           float angInit_res = angInit_rad * (*(command + 5)); /*adjust initial angle in radians by input resolution*/
           float angFinal_res = (pi / 180) * (-(*(command + 3)) + 90) * (*(command + 5)); /*convert final angle from degrees to radians then adjust by input resolution*/
           long dispInitx = dimensions[0] * 0.5 + ((float) * (command + 1)) * cos(angInit_rad) - location[0];
           long dispInity = ((float) * (command + 1)) * sin(angInit_rad) - location[1];
-          line(dispInitx, dispInity, vel); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
+          line(dispInitx, dispInity, Delay); /*move to initial position, x-direction: center + rcos(angInit), y-direction: 0 + rsin(angInit)*/
           for (int i = angInit_res; i <= angFinal_res; i++) { /*move from initial to final angle*/
             int dx = round(-(*(command + 1)) / (*(command + 5)) * sin((float)i / (*(command + 5)))); /*change in x-direction, derivative of rcos(theta) adjusted for resolution*/
             int dy = round((*(command + 1)) / (*(command + 5)) * cos((float)i / (*(command + 5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
@@ -586,11 +587,11 @@ void loop()
             int maxDelay = j;
             Serial.println("Delay");
             /* Angle Loop */
-            for (int i = 0; i <= maxDistance; i += ddistance) {
-              recalibrate(xMax);
-              recalibrate(yMin);
+            for (int i = 0; i <= -maxDistance; i -= ddistance) {
+              recalibrate(xMin);
+              recalibrate(yMax);
               delay(1000);
-              int x = -maxDistance; // Steps
+              int x = maxDistance; // Steps
               int y = i;
 
               /* Calculate how long it takes to move to specified position at specified delayMicroseconds */
