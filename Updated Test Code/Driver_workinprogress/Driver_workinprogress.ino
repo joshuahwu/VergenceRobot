@@ -35,6 +35,35 @@ float coeffsArray; /*for parsing speed model coefficients*/
 float forward_coeffs[16]; /*used in delayToSpeed function*/
 float reverse_coeffs[16]; /*used in speedToDelay function*/
 
+/*Blink an LED twice
+ * input: specific LED pin
+ * that pin must be set to HIGH before calling this function 
+ */
+void Blink(int LED) {
+  digitalWrite(LED, LOW);
+  delay(1000);
+  digitalWrite(LED, HIGH);
+  delay(1000);
+  digitalWrite(LED, LOW);
+  delay(1000);
+  digitalWrite(LED, HIGH);
+}
+
+/*confirm serial connection function
+ * initialize serialInit as X
+ * send A to MATLAB
+ * expecting to receive A
+ * if doeS not receive A, then continue reading COM port and blinking red LED
+ */
+void initialize() {
+  char serialInit = 'X';
+  Serial.println("A");
+  while (serialInit != 'A') 
+  {
+    serialInit = Serial.read();
+    Blink(RED);
+  }
+}
 
 /* parseCommand function: Parses command received from Serial Connection and returns designated inputs */
 double* parseCommand(char strCommand[]) { /*inputs are null terminated character arrays*/
@@ -133,14 +162,19 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
 void loadInfo() {
   Serial.println("ReadyToReceiveCoeffs"); /*signal MATLAB to begin send coeffs*/
   while (1) { /*loop through infinitely*/
-    coeffsString = Serial.readString();/*read characters from serial connection into String object*/
+    String coeffsString = Serial.readString();/*read characters from serial connection into String object*/
     /*this section of code is nearly identical to part of parseCommand function above*/
     if (coeffsString != NULL) {
       char inputArray[coeffsString.length() + 1];
       coeffsString.toCharArray(inputArray, coeffsString.length() + 1);
       float *coeffs = parseCoeffs(inputArray);
+      if (*coeffs ==1) {
+        Serial.println("ForwardCoeffsReceived");
+      }
       if (*coeffs == 2) {/*if the reverse_coeffs has been received from MATLAB*/
-        Serial.println("CoeffsReceived");
+        pinMode(GREEN, HIGH);
+        Blink(GREEN);
+        Serial.println("ReverseCoeffsReceived");
         break; /*break from the while loop*/
       }
     }
@@ -415,13 +449,7 @@ void setup()
   Serial.begin(9600);
 
   /* Communicates with Serial connection to verify */
-  Serial.println("a");
-  //Serial.println("Type the letter a, then hit enter."); /*Arduino Sending given message*/
-  char serialInit = 'b';
-  while (serialInit != 'a') /*while serialInit does not equal a, which is always since serialInit = b*/
-  {
-    serialInit = Serial.read(); /*Arduino should receive 'a'; be ready to read incoming serial data*/
-  }
+  initialize();
 
   /* Determines dimensions by moving from xmax to xmin, then ymax to ymin*/
   int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
@@ -429,12 +457,10 @@ void setup()
   dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
   dimensions[1] = *(i + 1) * microsteps; //54624; /*y-dimension*/
 
-  //loadInfo();
+  loadInfo();
   Serial.println("Ready");
   digitalWrite(GREEN, HIGH);
 }
-
-
 
 /* Main looping function
    Waits for commands from Serial Connection and executes actions

@@ -19,19 +19,21 @@ classdef ExperimentClass < handle
             fopen(obj.connection);
             
             % Confirms serial connection
-            SerialInit = 'b';
-            while (SerialInit~='a')
+            SerialInit = 'X';
+            while (SerialInit~='A')
                 SerialInit=fread(obj.connection,1,'uchar'); %be ready to receive any incoming data
             end
-            if (SerialInit=='a')
+            if (SerialInit=='A')
                 disp('Serial read')
             end
             
-            fprintf(obj.connection,'%c','a'); %MATLAB sending 'a'
+            fprintf(obj.connection,'%c','A'); %MATLAB sending 'a'
+      
             %response to Arduino's "Type the letter a, then hit enter."
             %equivalent of typing 'a' into Serial monitor
             mbox = msgbox('Serial Communication setup'); uiwait(mbox);
-            fscanf(obj.connection,'%u')% read from Arduino; MATLAB should receive ", then hit enter"
+            flushinput(obj.connection);
+            %check(obj)% read from Arduino; MATLAB should receive ", then hit enter"
             
             % Save parameters (forward_coeffs, reverse_coeffs) that will be sent from MATLAB
             % to Arduino at start of each experiment
@@ -41,23 +43,13 @@ classdef ExperimentClass < handle
             forward_coeffs = obj.forward_coeffs;
             reverse_coeffs = obj.reverse_coeffs;
             
-             %% communication testing
-%             % Send coefficients from MATLAB to Arduino 
-%             while (1)
-%                 startSignal = fscanf(obj.connection, '%s')
-%                 if (strcmp(startSignal,'Ready')==1)
-%                     disp('Coefficients Received by Arduino');
-%                     break;
-%                 elseif (strcmp(startSignal,'ReadyToReceiveCoeffs')==1) 
-%                     sendCoeffs(obj, forward_coeffs)
-%                     sendCoeffs(obj, reverse_coeffs)          
-%                 end 
-%             end 
-                
-%             sendCoeffs(obj, forward_coeffs)
-%             sendCoeffs(obj, reverse_coeffs)
+            check(obj); %should receive "ReadyToReceiveCoeffs"
+            sendCoeffs(obj, forward_coeffs);
+            check(obj); %should receive "ForwardCoeffsReceived"
+            sendCoeffs(obj, reverse_coeffs);
+            check(obj); %should receive "ReverseCoeffsReceived"
             
-            fscanf(obj.connection,'%s') %read from Arduino; should receive "Ready"
+            check(obj);%fscanf(obj.connection,'%s') %read from Arduino; should receive "Ready"
         end
         
         function output = readSerial(obj,type) 
@@ -269,18 +261,27 @@ classdef ExperimentClass < handle
         % were received and parsed
         
         function sendCoeffs(obj, coeffs)
-          while (strcmp(fscanf(obj.connection,'%s'),'ReadyToReceiveCoeffs') == 1)
-              disp('Preparing to Send Coefficients');
-          end 
             str = inputname(2);
             strList = sprintf(':%d', coeffs);
             strToSend = [str strList];
-            fprintf(obj.connection, strToSend);
-          while (strcmp(fscanf(obj.connection,'%s'),'CoeffsReceived') == 1)
-              disp('Coefficients Received by Arduino');
-          end
-            fscanf(obj.connection, '%s')         
+            fprintf(obj.connection, strToSend);      
         end
+        
+function output = check(obj)
+data = '';
+while(1)
+    data = fscanf(obj.connection, '%s');
+    if isempty(data) == 1
+        data = fscanf(obj.connection, '%s');
+        %1
+    elseif isempty(data) == 0
+        disp(data);
+        output = data;
+        %2
+        break;
+    end
+end
+end
        
     end
     
