@@ -1,35 +1,27 @@
-%% isReceiving
+%% isReceiving1
 
 % open serial connection
 comPort = serial('COM8','DataBits',8,'StopBits',1,'BaudRate',9600,'Parity','none');
 fopen(comPort);
 % confirm serial connection
-% SerialInit = 'B';
-% while(SerialInit~='A')
-%     SerialInit = fscanf(comPort,'%c',1);
-% end
-% if SerialInit == 'A' % while statement could time out
-%     disp('Serial read');
-% end 
-% fprintf(comPort, '%c', 'A');
-
-forward_coeffs = rand(4,4);
-reverse_coeffs = rand(4,4);
-
-check(comPort);
-sendArray(comPort, forward_coeffs);
-sendArray(comPort, reverse_coeffs);
-check(comPort)
+SerialInit = 'B';
+while(SerialInit~='A')
+    SerialInit = fscanf(comPort,'%c',1);
+end
+if SerialInit == 'A' % while statement could time out
+    disp('Serial read');
+end 
+fprintf(comPort, '%c', 'A');
 
 %should receive "Done"
 check(comPort)
 % %% playing with communication
 % % send and receive a 5
-% fprintf(comPort, '%s', '5');
-% check(comPort)
-% %send and receive "Hello"
-% fprintf(comPort, '%s', 'Hello');
-% check(comPort)
+fprintf(comPort, '%s', '5');
+check(comPort)
+%send and receive "Hello"
+fprintf(comPort, '%s', 'Hello');
+check(comPort)
 
 fclose(comPort);   
 
@@ -65,16 +57,4 @@ while(1)
         break;
     end 
 end 
-end
-
-%% sendCoeffs function
-%takes in matrix of coeffcients
-%converts matrix to a string that with : delimiter
-%sends string to Arduino
-
-function sendArray(comPort, array)
-str = inputname(2);
-strList = sprintf(':%f', array);
-strToSend = [str strList];
-fprintf(comPort, strToSend);
 end

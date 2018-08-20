@@ -462,7 +462,7 @@ void loop()
         location[0] = 0;
         location[1] = 0;
         Serial.println("Done");
-        delay(400);
+        delay(1000);
         digitalWrite(GREEN, HIGH); /*turn off green*/
         break;
       case 2: // move:x0:y0:hold duration
@@ -492,7 +492,7 @@ void loop()
           /*move along calculated displacement vector from current location to desired starting point*/
           digitalWrite(RED, LOW);/*turn on red*/
           line(dispx, dispy, Delay);
-          delay(400);
+          delay(1000);
           int maxSpeed = *(command + 5); /*max speed implemented is input speed from command*/
           int delta = *(command + 7); /*this does nothing right now...*/
           long store_a = -dx / 2; /*ditto*/
@@ -537,6 +537,7 @@ void loop()
           }
           digitalWrite(RED, HIGH);/*turn off red*/
           Serial.println("Done");
+          delay(2000);
         }
         break;
       case 4: // arc:radius:angInit:angFinal:delayArc:arcRes
@@ -552,7 +553,6 @@ void loop()
             int dy = round((*(command + 1)) / (*(command + 5)) * cos((float)i / (*(command + 5)))); /*change in y-direction, derivative of rsin(theta) adjusted for resolution*/
             line(dx, dy, *(command + 4)); /*draw small line, which represents part of circle/arc*/
           }
-          Serial.println("Done");
         }
         break;
       case 5: //SpeedModeling:delayi:delayf:ddelay:angleTrials
@@ -590,7 +590,7 @@ void loop()
             for (int i = 0; i <= -maxDistance; i -= ddistance) {
               recalibrate(xMin);
               recalibrate(yMax);
-              delay(400);
+              delay(1000);
               int x = maxDistance; // Steps
               int y = i;
 
