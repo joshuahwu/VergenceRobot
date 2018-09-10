@@ -1,6 +1,4 @@
-a = ExperimentClass08_29_18('COM8');
-
-a.speedModelFit(15,60,5,14);
+a = ExperimentClass_old('COM8');
 
 % a.linearOscillate(10,5,90,45,30,1,100);
 % 

@@ -78,7 +78,7 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     inputs[0] = 1; /*set first element in array to 1, switch case for calibrate*/
     return inputs;
 
-  } else if (strcmp(fstr, "move") == 0) { /*implement if first string is "move"*/
+  } else if (strcmp(fstr, "moveTo") == 0) { /*implement if first string is "move"*/
     /* Move to specific coordinate
        Numerical Inputs:
        (x0,y0) - destination coordinates in designated coordinate system
@@ -95,7 +95,7 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     }
     return inputs;
 
-  } else if (strcmp(fstr, "oscillate") == 0) { /*implement if first string is "oscillate"*/
+  } else if (strcmp(fstr, "linearOscillate") == 0) { /*implement if first string is "oscillate"*/
     /* Oscillate between two specific coordinates
         Numerical Inputs:
        (x0,y0) and (x1,y1) - coordinates to move between in designated coordinate system
@@ -114,7 +114,7 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     }
     return inputs;
 
-  } else if (strcmp(fstr, "arc") == 0) {
+  } else if (strcmp(fstr, "smoothPursuit") == 0) {
     /* Move in an arc
       Numerical inputs:
       radius - measured in steps, somewhat arbitrary at the moment
@@ -133,7 +133,7 @@ double* parseCommand(char strCommand[]) { /*inputs are null terminated character
     }
     return inputs;
 
-  } else if (strcmp(fstr, "SpeedModeling") == 0) {
+  } else if (strcmp(fstr, "SpeedModelFit") == 0) {
     /*switch case
        SpeedModeling:delayi:delayf:ddelay:angleTrials
     */
@@ -452,10 +452,10 @@ void setup()
   initialize();
 
   /* Determines dimensions by moving from xmax to xmin, then ymax to ymin*/
-  int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
+  //int *i = findDimensions(); /*pointer of the array that contains the x & y-dimensions in terms of steps*/
   /* Scales dimensions to be in terms of microsteps*/
-  dimensions[0] = *i * microsteps; //106528; /*x-dimension*/
-  dimensions[1] = *(i + 1) * microsteps; //54624; /*y-dimension*/
+  dimensions[0] = 106528;//*i * microsteps; //106528; /*x-dimension*/
+  dimensions[1] = 54624;//*(i + 1) * microsteps; //54624; /*y-dimension*/
 
   loadInfo();
   Serial.println("Ready");
@@ -492,7 +492,7 @@ void loop()
         delay(1000);
         digitalWrite(GREEN, HIGH); /*turn off green*/
         break;
-      case 2: // move:x0:y0:hold duration 
+      case 2: // moveTo:x0:y0:hold duration 
       //BLUE
         /* Simple move to designated location and holds for a certain time
         */
@@ -506,10 +506,10 @@ void loop()
         delay(*(command + 3)); /*delay by the specified hold duration*/
         digitalWrite(BLUE, HIGH);/*turn off blue*/
         break;
-      case 3: // oscillate:x0:y0:x1:y1:speed:repetitions:resolution
+      case 3: // linearOscillate:x0:y0:x1:y1:speed:repetitions:resolution
       //RED
         {
-          /* Oscillate
+          /* Linear Oscillate
              Moves to first coordinate and oscillates between that and second coordinate
           */
           /*change in x/y, difference between initial x/y and final x/y adjusted for virtual dimension and size of system*/
@@ -569,7 +569,7 @@ void loop()
           delay(1000);
         }
         break;
-      case 4: // arc:radius:angInit:angFinal:delayArc:arcRes
+      case 4: // smoothPursuit:radius:angInit:angFinal:delayArc:arcRes
       //RED & BLUE
         {
           float angInit_rad = (pi / 180) * (-(*(command + 2)) + 90); /*convert initial angle from degrees to radians*/
@@ -590,7 +590,7 @@ void loop()
           Serial.println("Done");
         }
         break;
-      case 5: //SpeedModeling:delayi:delayf:ddelay:angleTrials
+      case 5: //speedModelFit:delayi:delayf:ddelay:angleTrials
         {
           /* Speed Trials
              Still needs testing

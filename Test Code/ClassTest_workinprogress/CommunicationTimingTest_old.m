@@ -4,11 +4,10 @@ clear
 comPort = serial('COM8','DataBits',8,'StopBits',1,'BaudRate',9600,'Parity','none');
 fopen(comPort);
 fclose(comPort);
-
 fopen(comPort);
 
-forward_coeffs = rand(4,4);
-reverse_coeffs = rand(4,4);
+% forward_coeffs = rand(4,4);
+% reverse_coeffs = rand(4,4);
 
 %confirm serial connection
 
@@ -25,13 +24,16 @@ end
 fprintf(comPort, '%s', 'A');
 flushinput(comPort);
 
- check(comPort);
+forward_coeffs = rand(4,4);
+reverse_coeffs = rand(4,4);
 
- check(comPort);
+ check(comPort); %should receive Z
+
+ check(comPort); %should receive "ReadyToSendCoeffs"
  sendArray(comPort, forward_coeffs);
- check(comPort);
+ check(comPort); %should receive "ForwardCoeffsReceived"
  sendArray(comPort, reverse_coeffs);
- check(comPort);
+ check(comPort); %should receive "ReverseCoeffsReceived"
  
  
  %should receive "Ready"
@@ -62,7 +64,7 @@ while(1)
 end
 end
 
-%% sendCoeffs function
+%% sendArray function
 %takes in matrix of coeffcients
 %converts matrix to a string that with : delimiter
 %sends string to Arduino

@@ -1,23 +1,13 @@
-%% isReceiving
 clear
-% open serial connection
-comPort = serial('COM8','DataBits',8,'StopBits',1,'BaudRate',9600,'Parity','none');
-% fopen(comPort);
-% fclose(comPort);
-
+comPort = serial('COM8','DataBits',8,'StopBits',1,'BaudRate',14400,'Parity','none');
 fopen(comPort);
 
-forward_coeffs = rand(4,4);
-reverse_coeffs = rand(4,4);
-
-%confirm serial connection
-
 SerialInit = 'X';
-while(SerialInit~='B')
+while(SerialInit~='A')
     0
-    SerialInit = check(comPort);%fread(comPort,1,'uchar');
+    SerialInit = check(comPort);
 end
-if SerialInit ~= 'B' % while statement could time out
+if SerialInit ~= 'A'
     disp('Serial Communication Not Setup');
 else
     disp('Serial Read');
@@ -25,27 +15,28 @@ end
 fprintf(comPort, '%s', 'A');
 flushinput(comPort);
 
-%fprintf(comPort, '%s', 'SerialInitialized');
+forward_coeffs = rand(4,4);
+reverse_coeffs = rand(4,4);
 
-Z = check(comPort);
-% mbox = msgbox('Serial Communication Setup'); uiwait(mbox);
+ output = check(comPort) %should receive Z
 
+ output = check(comPort) %should receive "ReadyToReceiveCoeffs"
  sendArray(comPort, forward_coeffs);
- check(comPort);
+ output = check(comPort) %should receive "ForwardCoeffsReceived"
  sendArray(comPort, reverse_coeffs);
- check(comPort);
- check(comPort);
-%  
-%  %should receive "Ready"
-% check(comPort);
-% % % %% playing with communication
-% % % % send and receive a 5
-% % fprintf(comPort, '%s', '5');
-% % check(comPort);
-% % %send and receive "Hello"
-% % fprintf(comPort, '%s', 'Hello');
-% % check(comPort);
-% 
+ output = check(comPort) %should receive "ReverseCoeffsReceived"
+ 
+% should receive "Ready"
+ output = check(comPort)
+ 
+% random playing with communication
+% send and receive a 5
+fprintf(comPort, '%s', '5');
+ output = check(comPort)
+% send and receive "Hello"
+fprintf(comPort, '%s', 'Hello');
+ output = check(comPort)
+
 fclose(comPort);
 
 function output = check(comPort)
@@ -53,28 +44,18 @@ data = '';
 while(1)
     data = fscanf(comPort, '%s');
     if isempty(data) == 1
-        isReceiving = false;
-        1
-    elseif isempty(data) == 0
-        isReceiving = true;
-        2
-    end
-    if isReceiving == false
         data = fscanf(comPort, '%s');
-        if isempty(data) == 0
-            isReceiving = true;
-            3
-        end
-    elseif isReceiving == true
-        disp(data);
+        %1
+    elseif isempty(data) == 0
+        %disp(data);
         output = data;
-        4
+        %2
         break;
     end
 end
 end
 
-%% sendCoeffs function
+%% sendArray function
 %takes in matrix of coeffcients
 %converts matrix to a string that with : delimiter
 %sends string to Arduino

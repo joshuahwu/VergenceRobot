@@ -9,9 +9,9 @@ float forward_coeffs[16]; /*used in delayToSpeed function*/
 float reverse_coeffs[16]; /*used in speedToDelay function*/
 
 /*Blink an LED twice
- * input: specific LED pin
- * that pin must be set to HIGH before calling this function 
- */
+   input: specific LED pin
+   that pin must be set to HIGH before calling this function
+*/
 void Blink(int LED) {
   digitalWrite(LED, LOW);
   delay(1000);
@@ -23,18 +23,19 @@ void Blink(int LED) {
 }
 
 /*confirm serial connection function
- * initialize serialInit as X
- * send A to MATLAB
- * expecting to receive A
- * if doeS not receive A, then continue reading COM port and blinking red LED
- */
+   initialize serialInit as X
+   send A to MATLAB
+   expecting to receive A
+   if doeS not receive A, then continue reading COM port and blinking red LED
+*/
 void initialize() {
   char serialInit = 'X';
   Serial.println("A");
-  while (serialInit != 'A') 
+  while (serialInit != 'A')
   {
     serialInit = Serial.read();
-    Blink(GREEN);
+    pinMode(RED, HIGH);
+    Blink(RED);
   }
 }
 
@@ -53,12 +54,14 @@ void loadInfo() {
       char inputArray[coeffsString.length() + 1];
       coeffsString.toCharArray(inputArray, coeffsString.length() + 1);
       float *coeffs = parseCoeffs(inputArray);
-      if (*coeffs ==1) {
+      if (*coeffs == 1) {
         Serial.println("ForwardCoeffsReceived");
-      }
-      if (*coeffs == 2) {/*if the reverse_coeffs has been received from MATLAB*/
         pinMode(GREEN, HIGH);
         Blink(GREEN);
+      }
+      if (*coeffs == 2) {/*if the reverse_coeffs has been received from MATLAB*/
+        pinMode(RED, HIGH);
+        Blink(RED);
         Serial.println("ReverseCoeffsReceived");
         break; /*break from the while loop*/
       }
@@ -109,9 +112,9 @@ void setup() {
   pinMode(GREEN, OUTPUT);
   pinMode(RED, LOW);
   pinMode(BLUE, LOW);
-  pinMode(GREEN, HIGH);
+  pinMode(GREEN, LOW);
 
-  Serial.begin(9600);
+  Serial.begin(14400);
 
   initialize();
   Serial.println("Z");
@@ -119,14 +122,14 @@ void setup() {
   Blink(BLUE);
 
   loadInfo();
-  //Serial.println("Ready");
+  Serial.println("Ready");
 }
 
 void loop() {
-  /*String incoming = Serial.readString();
-    if (incoming != NULL) {
+  String incoming = Serial.readString();
+  if (incoming != NULL) {
     char incomingChar[incoming.length() + 1];
     incoming.toCharArray(incomingChar, incoming.length() + 1);
     Serial.println(incoming);
-    */
+  }
 }

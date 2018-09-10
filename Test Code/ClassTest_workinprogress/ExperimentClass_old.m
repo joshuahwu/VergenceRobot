@@ -1,21 +1,24 @@
-classdef ExperimentClass < handle
+classdef ExperimentClass_old < handle
 
     properties
         connection
         forward_coeffs = zeros(4,4);
         reverse_coeffs = zeros(4,4);
-        save_filename = 'parameters.mat';
+        save_filename = 'parameters_old.mat';
     end
     
     methods
         %% Experiment Constructor
-        function obj = ExperimentClass(comPort)
+        function obj = ExperimentClass_old(comPort)
             % Intializes Experiment class and opens connection
             obj.connection = serial(comPort);
             set(obj.connection,'DataBits',8);
             set(obj.connection,'StopBits',1);
             set(obj.connection,'BaudRate',9600);
             set(obj.connection,'Parity','none');
+            
+            fopen(obj.connection);
+            fclose(obj.connection);
             fopen(obj.connection);
             
             % Confirms serial connection
@@ -23,23 +26,23 @@ classdef ExperimentClass < handle
             while (SerialInit~='A')
                 SerialInit=fread(obj.connection,1,'uchar'); %be ready to receive any incoming data
             end
-            if (SerialInit=='A')
-                disp('Serial read')
+            if (SerialInit ~= 'A')
+                disp('Serial Communication Not Setup');
+            elseif (SerialInit=='A')
+                disp('Serial Read')
             end
             
-            fprintf(obj.connection,'%c','A'); %MATLAB sending 'a'
+            fprintf(obj.connection,'%c','A'); %MATLAB sending 'A'
       
-            %response to Arduino's "Type the letter a, then hit enter."
-            %equivalent of typing 'a' into Serial monitor
-            mbox = msgbox('Serial Communication setup'); uiwait(mbox);
+            %equivalent of typing 'A' into Serial monitor
+%             mbox = msgbox('Serial Communication setup'); uiwait(mbox);
             flushinput(obj.connection);
-            %check(obj)% read from Arduino; MATLAB should receive ", then hit enter"
             
             % Save parameters (forward_coeffs, reverse_coeffs) that will be sent from MATLAB
             % to Arduino at start of each experiment
-            parameters = load(obj.save_filename);
-            obj.forward_coeffs = parameters.forward_coeffs;
-            obj.reverse_coeffs = parameters.reverse_coeffs;
+            parameters_old = load(obj.save_filename);
+            obj.forward_coeffs = parameters_old.forward_coeffs;
+            obj.reverse_coeffs = parameters_old.reverse_coeffs;
             forward_coeffs = obj.forward_coeffs;
             reverse_coeffs = obj.reverse_coeffs;
             
@@ -75,7 +78,7 @@ classdef ExperimentClass < handle
             % Returns target to xMin and yMin at the bottom-left corner
             fprintf(obj.connection,'calibrate:');
             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Waiting Calibrate')
+                disp('Calibrate')
             end
         end
         
@@ -95,7 +98,7 @@ classdef ExperimentClass < handle
             fprintf(obj.connection,('arc:%d:%d:%d:%d:%d'),...
                 [radius,angInit,angFinal,speed,res]);
             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Waiting Arc Move Trial');
+                disp('Waiting Arc Movement Smooth Pursuit Trial');
             end
         end
         
@@ -118,7 +121,7 @@ classdef ExperimentClass < handle
                 [delayi,delayf,ddelay,angleTrials]);
             % while Beginning is being sent from Arduino, print given message
             while(strcmp(fscanf(obj.connection,'%s'),'Beginning')==1)
-                disp('Waiting for Experiment Start');
+                disp('Waiting for Speed Experiment Start');
             end
             
             % 1st read from Arduino: ddistance
@@ -267,20 +270,20 @@ classdef ExperimentClass < handle
             fprintf(obj.connection, strToSend);      
         end
         
-function output = check(obj)
-data = '';
-while(1)
-    data = fscanf(obj.connection, '%s');
-    if isempty(data) == 1
+function check(obj)
+    data = '';
+    while(1)
         data = fscanf(obj.connection, '%s');
-        %1
-    elseif isempty(data) == 0
-        disp(data);
-        output = data;
-        %2
-        break;
+        if isempty(data) == 1
+            data = fscanf(obj.connection, '%s');
+            %1
+        elseif isempty(data) == 0
+            disp(data);
+            %output = data;
+            %2
+            break;
+        end
     end
-end
 end
        
     end

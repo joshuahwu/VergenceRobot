@@ -1,4 +1,4 @@
-classdef ExperimentClass < handle
+classdef ExperimentClass08_29_18 < handle
 
     properties
         connection
@@ -9,7 +9,7 @@ classdef ExperimentClass < handle
     
     methods
         %% Experiment Constructor
-        function obj = ExperimentClass(comPort)
+        function obj = ExperimentClass08_29_18(comPort)
             % Intializes Experiment class and opens connection
             obj.connection = serial(comPort);
             set(obj.connection,'DataBits',8);
@@ -64,40 +64,51 @@ classdef ExperimentClass < handle
             % will oscillate the number of times as repetitions. Resolution represents
             % the step size for drawing of a pathway. Movement at the 10% edges are
             % slowed down.
-            fprintf(obj.connection,('oscillate:%d:%d:%d:%d:%d:%d:%d'),...
+            fprintf(obj.connection,('linearOscillate:%d:%d:%d:%d:%d:%d:%d'),...
                 [x0,y0,x1,y1,speed,repetitions,resolution]);
-            while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Linear Oscillate Trial')
-            end
+            checkForMovementEnd(obj, 'Linear Oscillate Trial');
+%             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
+%                 disp('Linear Oscillate Trial')
+%             end
         end
         
         %% CALIBRATION
         function calibrate(obj)
             % Returns target to xMin and yMin at the bottom-left corner
             fprintf(obj.connection,'calibrate:');
-            while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Calibrate')
-            end
+            checkForMovementEnd(obj, 'Calibrate');
+%             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
+%                 disp('Calibrate')
+%             end
         end
         
         %% Move
         function moveTo(obj,x,y,hold)
+            %count = 0; %to count number of times display while loop runs
             % Moves target to (x,y) and holds for designated milliseconds
-            fprintf(obj.connection,('move:%d:%d:%d'),[x,y,hold]);
-            while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Linear Move Trial')
-            end
+            fprintf(obj.connection,('moveTo:%d:%d:%d'),[x,y,hold]);
+            checkForMovementEnd(obj, 'Linear Move Trial Complete');
+%             while(strcmp(check(obj),'Done')~=1)
+%                 disp('Linear Move Trial')
+%                 count = count + 1
+%             end
+%             %check if this worked!
+%             if (count == 0)
+%                 disp('Linear Move Trial')
+%                 Hello
+%             end
         end
         
         %% Arc
-        function arc(obj,radius,angInit,angFinal,speed,res)
+        function smoothPursuit(obj,radius,angInit,angFinal,speed,res)
             % Moves target in an arc specified by radius and initial and final
             % angles
-            fprintf(obj.connection,('arc:%d:%d:%d:%d:%d'),...
+            fprintf(obj.connection,('smoothPursuit:%d:%d:%d:%d:%d'),...
                 [radius,angInit,angFinal,speed,res]);
-            while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
-                disp('Arc Movement/Smooth Pursuit Trial');
-            end
+            checkForMovementEnd(obj, 'Arc Movement/Smooth Pursuit Trial');
+%             while(strcmp(fscanf(obj.connection,'%s'),'Done')~=1)
+%                 disp('Arc Movement/Smooth Pursuit Trial');
+%             end
         end
         
         %% Close Connection
@@ -115,12 +126,12 @@ classdef ExperimentClass < handle
                 obj,delayi,delayf,ddelay,angleTrials)
             
             % Communicate with Arduino all the variables
-            fprintf(obj.connection,('SpeedModeling:%d:%d:%d:%d'),...
+            fprintf(obj.connection,('speedModelFit:%d:%d:%d:%d'),...
                 [delayi,delayf,ddelay,angleTrials]);
             % while Beginning is being sent from Arduino, print given message
-            while(strcmp(fscanf(obj.connection,'%s'),'Beginning')==1)
-                disp('Speed Experiment Trials');
-            end
+%             while(strcmp(fscanf(obj.connection,'%s'),'Beginning')==1)
+%                 disp('Speed Experiment Trials');
+%             end
             
             % 1st read from Arduino: ddistance
             ddistance = fscanf(obj.connection,'%d')
@@ -279,6 +290,18 @@ function waitSignal = check(obj)
             %disp(data);
             waitSignal = data;
             %2
+            break;
+        end
+    end
+end
+
+function checkForMovementEnd(obj, message)
+    endSignal = '';
+    while(1)
+        endSignal = fscanf(obj.connection, '%s');
+        if strcmp(endSignal, 'Done') ~= 1
+        else 
+            disp(message);
             break;
         end
     end
