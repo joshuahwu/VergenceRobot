@@ -1,4 +1,4 @@
-classdef ExperimentClass08_29_18 < handle
+classdef ExperimentClass_09_21_18 < handle
 
     properties
         connection
@@ -9,7 +9,7 @@ classdef ExperimentClass08_29_18 < handle
     
     methods
         %% Experiment Constructor
-        function obj = ExperimentClass08_29_18(comPort)
+        function obj = ExperimentClass_09_21_18(comPort)
             % Intializes Experiment class and opens connection
             obj.connection = serial(comPort);
             set(obj.connection,'DataBits',8);
