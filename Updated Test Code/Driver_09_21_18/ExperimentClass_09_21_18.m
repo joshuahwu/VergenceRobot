@@ -87,7 +87,7 @@ classdef ExperimentClass08_29_18 < handle
             %count = 0; %to count number of times display while loop runs
             % Moves target to (x,y) and holds for designated milliseconds
             fprintf(obj.connection,('moveTo:%d:%d:%d'),[x,y,hold]);
-            checkForMovementEnd(obj, 'Linear Move Trial Complete');
+            checkForMovementEnd(obj, 'Linear Move Trial');
 %             while(strcmp(check(obj),'Done')~=1)
 %                 disp('Linear Move Trial')
 %                 count = count + 1

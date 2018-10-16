@@ -31,7 +31,7 @@ int Delay = 30; /*default Delay for calibration and basic movement actions in te
 float pi = 3.14159265359; /*numerical value used for pi*/
 String val; /*String object to store inputs read from the Serial Connection*/
 String coeffsString; /*String object to store speed model coefficients sent from MATLAB*/
-float coeffsArray; /*for parsing speed model coefficients*/
+double coeffsArray; /*for parsing speed model coefficients*/
 float forward_coeffs[16]; /*used in delayToSpeed function*/
 float reverse_coeffs[16]; /*used in speedToDelay function*/
 
@@ -223,7 +223,7 @@ float* parseCoeffs(char strInput[]) {
    inputs: reverse coefficients array, speed, angle
    calculate delay using 3rd degree polynomials nested in 2-term exponential
 */
-double speedToDelay(double reverse_coeffs[], double Speed, double angle) {
+double speedToDelay(float reverse_coeffs[], double Speed, double angle) {
   double complex_coeffs[4];
   for (int i = 0; i <= 3; i++) {
     double temp_coeff[4] = {reverse_coeffs[0 + i * 4], reverse_coeffs[1 + i * 4], reverse_coeffs[2 + i * 4], reverse_coeffs[3 + i * 4]};
@@ -366,7 +366,7 @@ unsigned long recalibrate(int pin) { /*input is microswitch pin*/
    Input vector (in number of steps) along with pulse width (delay/speed)
    Proprioceptive location
 */
-void line(long x1, long y1, int v) { /*inputs: x-component of vector, y-component of vector, speed/pulse width*/
+void line(long x1, long y1, int v) { /*inputs: x-component of vector, y-component of vector, desired speed (units currently in steps/s)*/
   location[0] += x1; /*add x1 to current x-coordinate location*/
   location[1] += y1; /*add y1 to current y-coordinate location*/
   long x0 = 0, y0 = 0;
@@ -501,12 +501,14 @@ void loop()
         dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
         /*move by designated vector displacement*/
         digitalWrite(BLUE, LOW);/*turn on blue*/
+        //an
         line(dispx, dispy, Delay);
         Serial.println("Done");
         delay(*(command + 3)); /*delay by the specified hold duration*/
         digitalWrite(BLUE, HIGH);/*turn off blue*/
         break;
       case 3: // linearOscillate:x0:y0:x1:y1:speed:repetitions:resolution
+      //speed should never be less than 470 steps/s
       //RED
         {
           /* Linear Oscillate
@@ -520,15 +522,18 @@ void loop()
           dispy = (long) (*(command + 2) / virtDimY * dimensions[1]) - location[1];
           /*move along calculated displacement vector from current location to desired starting point*/
           digitalWrite(RED, LOW);/*turn on red*/
-          line(dispx, dispy, Delay);
+          //line(dispx, dispy, Delay);
           delay(1000);
           int maxSpeed = *(command + 5); /*max speed implemented is input speed from command*/
-          int delta = *(command + 7); /*this does nothing right now...*/
+          double angle = atan2(dy, dx);
+          double minDelay = speedToDelay(reverse_coeffs, maxSpeed, angle);/*calculate delay from speed; maxSpeed corresponds to minDelay (higher speed requires smaller delay)*/
+          Serial.print("Calculated Delay: ");
+          Serial.println(minDelay);
           long store_a = -dx / 2; /*ditto*/
           long store_b = -dy / 2; /*ditto*/
           //int f = 3;
-          int minSpeed = 60; /*Minimum speed that target slows down to at edges of movement*/
-          int dv = minSpeed - maxSpeed;
+          int maxDelay = 60; /*Minimum speed that target slows down to at edges of movement*/
+          int dv = maxDelay - minDelay;
           /*vector from initial to final location scaled for...*/
           long dtx = (long) dx / (10 * dv / 2);
           long dty = (long) dy / (10 * dv / 2);
@@ -536,31 +541,31 @@ void loop()
           for (int j = 1; j <= *(command + 6); j++) { /*implemented number of times specified by repetitions input*/
             /* Speeds up in first 10% with intervals of 2 microseconds from min speed to max speed*/
             for (int i = 0; i < (int)dv / 2; i++) {
-              int a = minSpeed - i * 2;
+              int a = maxDelay - i * 2;
               line(dtx, dty, a);
             }
 
             /* Moves middle 80% at max speed*/
-            line((long) dx * 0.8, (long) dy * 0.8, maxSpeed);
+            line((long) dx * 0.8, (long) dy * 0.8, minDelay);
 
             /* Slows down end 10% */
             for (int i = 0; i < (int)dv / 2; i++) {
-              int a = maxSpeed + i * 2;
+              int a = minDelay + i * 2;
               line(dtx, dty, a);
             }
 
             /* Speeds up end 10% back */
             for (int i = 0; i < (int)dv / 2; i++) {
-              int a = minSpeed - i * 2;
+              int a = maxDelay - i * 2;
               line(-dtx, -dty, a);
             }
 
             /* Moves middle 80% back at max speed*/
-            line((long) - dx * 0.8, (long) - dy * 0.8, maxSpeed);
+            line((long) - dx * 0.8, (long) - dy * 0.8, minDelay);
 
             /* Slows down end 10% back*/
             for (int i = 0; i < (int) dv / 2; i++) {
-              int a = maxSpeed + i * 2;
+              int a = minDelay + i * 2;
               line(-dtx, -dty, a);
             }
           }
