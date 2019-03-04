@@ -114,7 +114,7 @@ void setup() {
   pinMode(BLUE, LOW);
   pinMode(GREEN, LOW);
 
-  Serial.begin(14400);
+  Serial.begin(9600);
 
   initialize();
   Serial.println("Z");

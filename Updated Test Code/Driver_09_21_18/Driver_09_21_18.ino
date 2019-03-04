@@ -25,7 +25,7 @@ unsigned long dimensions[2] = {30000 * microsteps, 30000 * microsteps}; /*preall
 unsigned long location[2] = {0, 0}; /*presetting location*/
 /*arbitrary upper limit for location input, with lower limit of 0*/
 int virtDimX = 100; /* max x dimension that can be inputted*/
-int virtDimY = 50; /*max y dimension that can be inputted*/
+int virtDimY = 100; //small robot //50; /*max y dimension that can be inputted*/
 
 int Delay = 30; /*default Delay for calibration and basic movement actions in terms of square pulse width (microseconds)*/
 float pi = 3.14159265359; /*numerical value used for pi*/
